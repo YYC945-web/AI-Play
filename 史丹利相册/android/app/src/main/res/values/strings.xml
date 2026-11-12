@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">史丹利相册</string>
+    <string name="title_activity_main">史丹利相册</string>
+    <string name="package_name">com.stanly.photoalbum</string>
+    <string name="custom_url_scheme">com.stanly.photoalbum</string>
+</resources>

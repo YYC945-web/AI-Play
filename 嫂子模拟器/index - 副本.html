@@ -1,0 +1,1793 @@
+ <!DOCTYPE html>
+  <html lang="zh-CN">
+  <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>嫂子模拟器 - 楼娱篇</title>
+  <style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Serif SC', 'Microsoft YaHei', 'PingFang SC', serif;
+    background: #0d0221;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; overflow: hidden;
+    user-select: none;
+  }
+
+  #game-container {
+    width: 1200px; height: 750px;
+    background: #faf5ff;
+    border-radius: 24px; position: relative; overflow: hidden;
+    box-shadow: 0 0 100px rgba(147, 51, 234, 0.4), 0 0 200px rgba(236, 72, 153, 0.2),
+                0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  .petal {
+    position: absolute; pointer-events: none; z-index: 100;
+    animation: fall linear infinite; filter: blur(0.5px);
+  }
+  @keyframes fall {
+    0% { transform: translateY(-10vh) rotate(0deg) scale(1); opacity: 0.9; }
+    50% { opacity: 0.6; }
+    100% { transform: translateY(105vh) rotate(720deg) scale(0.4); opacity: 0; }
+  }
+
+  .screen { display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+  .screen.active { display: flex; }
+
+  /* ====== TITLE SCREEN ====== */
+  #title-screen {
+    flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at 50% 40%, #1e0a3c 0%, #0d0221 60%, #000 100%);
+  }
+  .title-stars { position: absolute; width: 100%; height: 100%; }
+  .star {
+    position: absolute; background: white; border-radius: 50%;
+    animation: twinkle var(--dur) infinite alternate;
+  }
+  @keyframes twinkle { 0% { opacity: 0.2; transform: scale(1); } 100% { opacity: 1; transform: scale(1.5); } }
+
+  .title-decor {
+    font-size: 16px; color: rgba(206,147,216,0.7); z-index: 10;
+    letter-spacing: 10px; margin-bottom: 16px;
+  }
+  .title-logo {
+    font-size: 58px; font-weight: 900; z-index: 10;
+    background: linear-gradient(135deg, #f9a8d4, #c084fc, #f472b6);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 40px rgba(236,72,153,0.5));
+    letter-spacing: 12px; margin-bottom: 6px;
+    animation: logoGlow 3s ease-in-out infinite;
+  }
+  @keyframes logoGlow {
+    0%, 100% { filter: drop-shadow(0 0 40px rgba(236,72,153,0.5)); }
+    50% { filter: drop-shadow(0 0 60px rgba(236,72,153,0.8)) drop-shadow(0 0 100px rgba(192,132,252,0.5)); }
+  }
+  .title-sub { font-size: 20px; color: #c084fc; z-index: 10; letter-spacing: 8px; margin-bottom: 36px; }
+  .title-quote {
+    font-size: 14px; color: rgba(255,255,255,0.5); z-index: 10;
+    font-style: italic; margin-bottom: 48px; text-align: center;
+    line-height: 2; max-width: 480px;
+  }
+  .title-quote::before { content: '❝ '; color: #c084fc; font-size: 20px; }
+  .title-quote::after { content: ' ❞'; color: #c084fc; font-size: 20px; }
+
+  .btn {
+    padding: 14px 52px; border: none; border-radius: 30px;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4,0,0.2,1); letter-spacing: 4px;
+    font-family: inherit; z-index: 10; position: relative;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #ec4899, #a855f7);
+    color: white; box-shadow: 0 6px 30px rgba(236,72,153,0.4);
+  }
+  .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 10px 40px rgba(236,72,153,0.6); }
+  .btn-secondary {
+    background: rgba(255,255,255,0.08); color: #c084fc;
+    border: 2px solid rgba(192,132,252,0.4);
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.15); border-color: #c084fc; }
+  .btn-small { padding: 8px 22px; font-size: 13px; letter-spacing: 2px; border-radius: 20px; }
+  .btn-danger { background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.4); color: #fca5a5; font-size: 12px;
+   padding: 7px 18px; letter-spacing: 1px; }
+  .btn-danger:hover { background: rgba(239,68,68,0.35); }
+
+  /* ====== SAVE/LOAD MODAL ====== */
+  .modal-overlay {
+    display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7); z-index: 200;
+    justify-content: center; align-items: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal-box {
+    background: linear-gradient(180deg, #2d1b4e, #1a0a34);
+    border-radius: 20px; padding: 28px 32px; width: 480px; max-height: 70vh;
+    overflow-y: auto; border: 1px solid rgba(192,132,252,0.3);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .modal-box h3 { color: #c084fc; font-size: 18px; letter-spacing: 3px; margin-bottom: 16px; text-align: center; }
+  .save-slot {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-radius: 14px; margin-bottom: 8px;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+    transition: all 0.3s;
+  }
+  .save-slot:hover { background: rgba(255,255,255,0.1); }
+  .save-slot .slot-info { flex: 1; }
+  .save-slot .slot-name { color: #e5e7eb; font-size: 14px; font-weight: 600; }
+  .save-slot .slot-meta { color: #9ca3af; font-size: 11px; margin-top: 2px; }
+  .save-slot .slot-btns { display: flex; gap: 6px; }
+  .slot-btn {
+    padding: 6px 14px; border-radius: 12px; border: 1px solid rgba(192,132,252,0.3);
+    background: rgba(192,132,252,0.1); color: #c084fc; cursor: pointer;
+    font-size: 11px; font-family: inherit; letter-spacing: 1px; transition: all 0.3s;
+  }
+  .slot-btn:hover { background: rgba(192,132,252,0.3); }
+  .slot-btn.danger { border-color: rgba(239,68,68,0.3); color: #fca5a5; background: rgba(239,68,68,0.1); }
+  .slot-btn.danger:hover { background: rgba(239,68,68,0.25); }
+
+  /* ====== IN-GAME MENU BAR ====== */
+  .game-menu-bar {
+    position: absolute; top: 0; left: 300px; right: 0; height: 36px;
+    background: rgba(15,4,37,0.9); z-index: 50; display: flex;
+    align-items: center; justify-content: flex-end; padding: 0 14px; gap: 6px;
+  }
+  .menu-btn {
+    padding: 4px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.04); color: #a78bfa; cursor: pointer;
+    font-size: 10px; font-family: inherit; letter-spacing: 1px; transition: all 0.2s;
+  }
+  .menu-btn:hover { background: rgba(192,132,252,0.2); border-color: #c084fc; color: #c084fc; }
+
+  /* ====== CREATION SCREENS ====== */
+  #create-screen, #identity-screen, #target-screen, #attr-screen {
+    background: linear-gradient(180deg, #fef3f9 0%, #faf5ff 40%, #f5f0ff 100%);
+    flex-direction: column; overflow-y: auto; padding: 24px 40px;
+  }
+  .create-header { text-align: center; margin-bottom: 16px; }
+  .create-header h2 {
+    font-size: 26px; background: linear-gradient(135deg, #7c3aed, #db2777);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; letter-spacing: 4px; margin-bottom: 4px;
+  }
+  .create-header .subtitle { font-size: 13px; color: #a78bfa; letter-spacing: 2px; }
+  .create-header .subtitle::before, .create-header .subtitle::after { content: ' · '; color: #c084fc; }
+
+  .create-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px 30px; width: 100%; max-width: 920px; margin: 0 auto;
+  }
+  .form-group { display: flex; flex-direction: column; }
+  .form-group label {
+    font-size: 13px; color: #6d28d9; font-weight: 600; margin-bottom: 5px;
+    letter-spacing: 1px; display: flex; align-items: center; gap: 6px;
+  }
+  .form-group label::before { content: '◆'; color: #c084fc; font-size: 8px; }
+  .form-group input, .form-group select, .form-group textarea {
+    padding: 10px 16px; border: 2px solid #e9d5ff; border-radius: 14px;
+    font-size: 14px; background: rgba(255,255,255,0.8); font-family: inherit;
+    transition: all 0.3s; outline: none; resize: vertical;
+    box-shadow: 0 2px 8px rgba(139,92,246,0.06);
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: #a855f7; box-shadow: 0 0 0 3px rgba(168,85,247,0.1), 0 4px 15px rgba(139,92,246,0.12);
+  }
+  .form-group textarea { height: 60px; }
+  .form-full { grid-column: 1 / -1; }
+
+  /* Identity Cards */
+  #identity-screen { background: linear-gradient(180deg, #faf5ff 0%, #f0e6ff 100%); }
+  .identity-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 14px; width: 100%; max-width: 960px; margin: 0 auto;
+  }
+  .identity-card {
+    background: white; border-radius: 18px; padding: 18px 16px; cursor: pointer;
+    border: 2px solid #e9d5ff; transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+    box-shadow: 0 4px 20px rgba(139,92,246,0.06);
+    position: relative; overflow: hidden;
+  }
+  .identity-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, #c084fc, #f472b6); opacity: 0; transition: opacity 0.3s;
+  }
+  .identity-card:hover { border-color: #c084fc; transform: translateY(-5px); box-shadow: 0 12px 35px
+  rgba(139,92,246,0.15); }
+  .identity-card:hover::before { opacity: 1; }
+  .identity-card.selected { border-color: #7c3aed; background: linear-gradient(135deg, #fef3f9, #faf5ff); box-shadow: 0
+  12px 35px rgba(139,92,246,0.25); }
+  .identity-card.selected::before { opacity: 1; }
+  .identity-card .icon-big { font-size: 36px; margin-bottom: 8px; display: block; }
+  .identity-card h3 { font-size: 15px; color: #5b21b6; margin-bottom: 4px; letter-spacing: 1px; }
+  .identity-card .role { font-size: 11px; color: #a855f7; margin-bottom: 8px; font-weight: 600; }
+  .identity-card .desc { font-size: 11px; color: #6b7280; line-height: 1.6; margin-bottom: 8px; }
+  .identity-card .stats { font-size: 10px; color: #db2777; line-height: 1.5; opacity: 0.85; }
+
+  /* Target Grid */
+  #target-screen { background: linear-gradient(180deg, #fef3f9, #faf5ff); }
+  .target-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 10px; width: 100%; max-width: 920px; margin: 0 auto;
+  }
+  .target-card {
+    background: white; border-radius: 14px; padding: 14px 10px; text-align: center;
+    cursor: pointer; border: 2px solid #e9d5ff; transition: all 0.3s;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.04);
+  }
+  .target-card:hover { border-color: #c084fc; transform: translateY(-3px); box-shadow: 0 8px 25px rgba(139,92,246,0.15);
+   }
+  .target-card.selected { border-color: #ec4899; background: #fef3f9; box-shadow: 0 6px 25px rgba(236,72,153,0.2); }
+  .target-card .avatar {
+    width: 54px; height: 54px; border-radius: 50%; margin: 0 auto 8px;
+    background: linear-gradient(135deg, #fce7f3, #ede9fe);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; border: 2px solid #f0e0f0;
+  }
+  .target-card h4 { font-size: 13px; color: #5b21b6; letter-spacing: 1px; }
+  .target-card .group { font-size: 10px; color: #a78bfa; margin-top: 2px; }
+
+  /* Attr Panel */
+  #attr-screen { background: linear-gradient(180deg, #faf5ff, #f0e6ff); }
+  .attr-panel {
+    background: white; border-radius: 20px; padding: 24px 36px;
+    max-width: 680px; margin: 0 auto; width: 100%;
+    box-shadow: 0 8px 35px rgba(139,92,246,0.08); border: 1px solid #f0e0f0;
+  }
+  .attr-row {
+    display: flex; align-items: center; margin-bottom: 16px; gap: 12px;
+    padding: 10px 14px; border-radius: 12px; background: #faf8ff; transition: background 0.3s;
+  }
+  .attr-row:hover { background: #f5f0ff; }
+  .attr-icon { font-size: 26px; width: 40px; text-align: center; flex-shrink: 0; }
+  .attr-info { flex: 1; }
+  .attr-name { font-size: 14px; font-weight: 700; color: #4a148c; letter-spacing: 1px; }
+  .attr-desc { font-size: 11px; color: #9ca3af; margin-top: 2px; line-height: 1.4; }
+  .attr-ctrl { display: flex; align-items: center; gap: 10px; }
+  .attr-btn {
+    width: 34px; height: 34px; border-radius: 50%; border: 2px solid #c4b5fd;
+    background: white; font-size: 18px; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; transition: all 0.2s;
+    color: #6d28d9; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .attr-btn:hover { background: #ede9fe; border-color: #7c3aed; }
+  .attr-btn:disabled { opacity: 0.25; cursor: not-allowed; box-shadow: none; }
+  .attr-val { font-size: 20px; font-weight: 800; color: #6d28d9; min-width: 32px; text-align: center; }
+  .attr-bar-wrap { width: 80px; height: 6px; background: #ede9fe; border-radius: 3px; overflow: hidden; }
+  .attr-bar-fill { height: 100%; background: linear-gradient(90deg, #c084fc, #a855f7); border-radius: 3px; transition:
+  width 0.4s; }
+  .attr-total { text-align: center; font-size: 16px; font-weight: 700; margin-top: 10px; padding: 10px; border-radius:
+  12px; letter-spacing: 2px; }
+  .attr-total.has-points { color: #db2777; background: #fef3f9; }
+  .attr-total.no-points { color: #059669; background: #ecfdf5; }
+
+  /* ====== GAME SCREEN ====== */
+  #game-screen { flex-direction: column; background: #faf5ff; }
+
+  .game-menu-bar {
+    position: relative; left: auto; height: 34px; min-height: 34px;
+    background: #0f0425; z-index: 50; display: flex;
+    align-items: center; justify-content: flex-end; padding: 0 12px; gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .game-main { display: flex; flex: 1; min-height: 0; }
+
+  /* Left Panel */
+  .game-left {
+    width: 300px; min-width: 300px;
+    background: linear-gradient(180deg, #0f0425 0%, #1a0a34 30%, #1e1040 100%);
+    color: white; padding: 14px; display: flex; flex-direction: column;
+    overflow-y: auto; gap: 8px;
+    border-right: 1px solid rgba(192,132,252,0.2);
+  }
+  .game-left::-webkit-scrollbar { width: 4px; }
+  .game-left::-webkit-scrollbar-thumb { background: rgba(192,132,252,0.3); border-radius: 4px; }
+
+  .mini-chara {
+    width: 100%; height: 130px; min-height: 130px;
+    background: linear-gradient(135deg, rgba(139,92,246,0.3), rgba(236,72,153,0.2));
+    border-radius: 14px; display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);
+  }
+  .mini-chara::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 30px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.3));
+  }
+  .mini-chara .chara-body {
+    font-size: 60px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4));
+    animation: charaFloat 3s ease-in-out infinite;
+  }
+  @keyframes charaFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  .panel-block {
+    background: rgba(255,255,255,0.04); border-radius: 12px; padding: 10px 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .panel-block h3 {
+    font-size: 10px; color: #c084fc; letter-spacing: 2px; margin-bottom: 6px;
+    font-weight: 600; display: flex; align-items: center; gap: 6px;
+  }
+  .panel-block h3::after { content: ''; flex: 1; height: 1px; background: rgba(192,132,252,0.2); }
+
+  .stat-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; padding: 2px 0;
+  color: #d1d5db; }
+  .stat-row .val { color: #f9a8d4; font-weight: 700; font-size: 12px; }
+  .stat-bar { width: 100%; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; margin: 2px 0 4px;
+  overflow: hidden; }
+  .stat-bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+  .stat-bar-fill.favor { background: linear-gradient(90deg, #f472b6, #ec4899); box-shadow: 0 0 6px rgba(236,72,153,0.4);
+   }
+  .stat-bar-fill.trust { background: linear-gradient(90deg, #60a5fa, #3b82f6); box-shadow: 0 0 6px rgba(59,130,246,0.4);
+   }
+  .stat-bar-fill.intimacy { background: linear-gradient(90deg, #a78bfa, #8b5cf6); box-shadow: 0 0 6px
+  rgba(139,92,246,0.4); }
+  .stat-bar-fill.risk { background: linear-gradient(90deg, #fbbf24, #ef4444); box-shadow: 0 0 6px rgba(239,68,68,0.4); }
+  .stat-bar-fill.love { background: linear-gradient(90deg, #f472b6, #ec4899, #f472b6); box-shadow: 0 0 8px
+  rgba(236,72,153,0.6); animation: loveGlow 2s ease-in-out infinite; }
+  @keyframes loveGlow {
+    0%, 100% { box-shadow: 0 0 8px rgba(236,72,153,0.6); }
+    50% { box-shadow: 0 0 16px rgba(236,72,153,0.9); }
+  }
+
+  .risk-badge { display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 10px; font-weight: 700;
+  letter-spacing: 1px; }
+  .stage-badge { text-align: center; font-size: 10px; padding: 4px 10px; margin-top: 2px; border-radius: 10px;
+  letter-spacing: 1px; font-weight: 600; background: rgba(255,255,255,0.06); color: #c084fc; }
+  .love-badge { text-align: center; font-size: 10px; padding: 4px 10px; margin-top: 2px; border-radius: 10px;
+  letter-spacing: 1px; font-weight: 600; background: rgba(236,72,153,0.2); color: #f9a8d4; animation: loveGlow 2s
+  ease-in-out infinite; }
+
+  .action-remaining { display: flex; align-items: center; gap: 5px; margin-top: 2px; font-size: 11px; color: #f9a8d4;
+  font-weight: 600; }
+  .action-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; transition: all 0.3s; }
+  .action-dot.used { background: rgba(255,255,255,0.12); }
+  .action-dot.avail { background: #f472b6; box-shadow: 0 0 6px rgba(244,114,182,0.5); }
+
+  /* Right Panel */
+  .game-right { flex: 1; display: flex; flex-direction: column; background: #fdfaff; min-width: 0; }
+
+  .scene-area {
+    flex: 1; padding: 24px 32px; overflow-y: auto;
+    background: linear-gradient(180deg, #fefdfd 0%, #fdfaff 30%, #faf5ff 100%);
+    position: relative;
+  }
+  .scene-area::-webkit-scrollbar { width: 5px; }
+  .scene-area::-webkit-scrollbar-thumb { background: #e9d5ff; border-radius: 5px; }
+
+  .scene-week-header {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 18px;
+    padding-bottom: 14px; border-bottom: 1px solid #f0e0f0;
+  }
+  .week-badge {
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: white; padding: 6px 14px; border-radius: 16px;
+    font-size: 12px; font-weight: 700; letter-spacing: 2px; white-space: nowrap;
+  }
+  .week-divider { flex: 1; height: 1px; background: linear-gradient(90deg, #e9d5ff, transparent); }
+
+  .scene-text { font-size: 15px; line-height: 2.1; color: #374151; letter-spacing: 0.3px; animation: fadeIn 0.4s
+  ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .scene-text .highlight { color: #7c3aed; font-weight: 600; }
+  .scene-text .emphasis { color: #db2777; font-style: italic; }
+  .scene-text .narration { color: #6b7280; }
+  .scene-text .thought { color: #9333ea; font-style: italic; }
+  .scene-text .divider { display: block; text-align: center; margin: 14px 0; color: #d8b4fe; letter-spacing: 8px;
+  font-size: 12px; }
+
+  /* Dialogue Box */
+  .dialogue-box {
+    background: linear-gradient(180deg, #1a0a34, #0f0425);
+    padding: 16px 24px 14px; min-height: 120px; max-height: 240px;
+    overflow-y: auto; border-top: 2px solid rgba(192,132,252,0.3);
+    position: relative; flex-shrink: 0;
+  }
+  .dialogue-box::before {
+    content: ''; position: absolute; top: -2px; left: 40px; right: 40px;
+    height: 2px; background: linear-gradient(90deg, transparent, #c084fc, transparent);
+  }
+  .dialogue-box::-webkit-scrollbar { width: 4px; }
+  .dialogue-box::-webkit-scrollbar-thumb { background: rgba(192,132,252,0.2); border-radius: 4px; }
+
+  .dialogue-speaker { font-size: 10px; color: #c084fc; letter-spacing: 2px; margin-bottom: 4px; font-weight: 600;
+  text-transform: uppercase; }
+  .dialogue-text { font-size: 14px; color: #f3f4f6; line-height: 1.8; margin-bottom: 10px; animation: fadeIn 0.3s
+  ease-out; }
+  .choices { display: flex; flex-direction: column; gap: 5px; }
+  .choice-btn {
+    padding: 10px 16px; border-radius: 14px;
+    border: 1.5px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.04); color: #e5e7eb;
+    font-size: 12px; cursor: pointer; text-align: left; transition: all 0.3s;
+    font-family: inherit; letter-spacing: 0.5px; position: relative;
+  }
+  .choice-btn:hover {
+    background: rgba(236,72,153,0.2); border-color: rgba(236,72,153,0.5);
+    transform: translateX(5px); box-shadow: 0 4px 15px rgba(236,72,153,0.15);
+  }
+  .choice-btn.locked { opacity: 0.35; cursor: not-allowed; }
+  .choice-btn.locked:hover { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.12); transform: none;
+  box-shadow: none; }
+  .choice-btn .letter { color: #c084fc; font-weight: 700; margin-right: 6px; }
+
+  /* Continue Button */
+  .continue-btn {
+    display: block; width: 100%; padding: 14px 20px; border-radius: 16px;
+    border: 2px solid rgba(192,132,252,0.4);
+    background: linear-gradient(135deg, rgba(236,72,153,0.15), rgba(168,85,247,0.15));
+    color: #f9a8d4; font-size: 14px; font-weight: 700; cursor: pointer;
+    text-align: center; transition: all 0.3s;
+    font-family: inherit; letter-spacing: 3px;
+  }
+  .continue-btn:hover {
+    background: linear-gradient(135deg, rgba(236,72,153,0.3), rgba(168,85,247,0.3));
+    border-color: #c084fc; box-shadow: 0 4px 20px rgba(236,72,153,0.3);
+    transform: translateY(-2px);
+  }
+
+  /* Action Grid */
+  .action-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-top: 4px;
+  }
+  .action-card {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 10px 8px; cursor: pointer; transition: all 0.3s;
+    font-size: 11px; color: #d1d5db; text-align: center;
+  }
+  .action-card:hover {
+    background: rgba(192,132,252,0.2); border-color: rgba(192,132,252,0.5);
+    transform: translateY(-2px); box-shadow: 0 4px 15px rgba(139,92,246,0.2);
+  }
+  .action-card.disabled {
+    opacity: 0.3; cursor: not-allowed; pointer-events: none;
+    filter: grayscale(0.5);
+  }
+  .action-card .aic { font-size: 20px; display: block; margin-bottom: 2px; }
+
+  /* Ending Screen */
+  #ending-screen {
+    flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at 50% 40%, #1e0a3c 0%, #0d0221 60%, #000 100%);
+  }
+  .ending-type-label { font-size: 14px; letter-spacing: 8px; margin-bottom: 12px; font-weight: 600; }
+  .ending-title {
+    font-size: 34px; font-weight: 900; margin-bottom: 24px; letter-spacing: 6px;
+    background: linear-gradient(135deg, #f9a8d4, #c084fc);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .ending-desc {
+    font-size: 15px; color: rgba(255,255,255,0.75); max-width: 560px;
+    text-align: center; line-height: 2.2; margin-bottom: 16px; padding: 20px 28px;
+    background: rgba(255,255,255,0.04); border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .ending-stats { font-size: 13px; color: rgba(255,255,255,0.4); margin-bottom: 28px; letter-spacing: 1px; }
+
+  /* Achievement Screen */
+  #achievement-screen {
+    flex-direction: column; align-items: center;
+    background: radial-gradient(ellipse at 50% 40%, #1e0a3c 0%, #0d0221 60%, #000 100%);
+    overflow-y: auto; padding: 30px 40px;
+  }
+  #achievement-screen::-webkit-scrollbar { width: 4px; }
+  #achievement-screen::-webkit-scrollbar-thumb { background: rgba(192,132,252,0.3); border-radius: 4px; }
+  .ach-header {
+    text-align: center; margin-bottom: 20px;
+  }
+  .ach-header h2 {
+    font-size: 28px; background: linear-gradient(135deg, #f9a8d4, #c084fc);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; letter-spacing: 6px; margin-bottom: 4px;
+  }
+  .ach-header .subtitle { font-size: 12px; color: rgba(255,255,255,0.5); letter-spacing: 2px; }
+  .ach-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 12px; width: 100%; max-width: 900px;
+  }
+  .ach-card {
+    background: rgba(255,255,255,0.04); border-radius: 14px; padding: 16px;
+    text-align: center; border: 1px solid rgba(255,255,255,0.08);
+    transition: all 0.3s;
+  }
+  .ach-card.unlocked {
+    background: rgba(236,72,153,0.1); border-color: rgba(236,72,153,0.3);
+    box-shadow: 0 0 20px rgba(236,72,153,0.1);
+  }
+  .ach-card.locked { opacity: 0.35; filter: grayscale(0.8); }
+  .ach-icon { font-size: 32px; margin-bottom: 6px; display: block; }
+  .ach-name { font-size: 13px; color: #e5e7eb; font-weight: 600; letter-spacing: 1px; margin-bottom: 2px; }
+  .ach-desc { font-size: 10px; color: #9ca3af; line-height: 1.4; }
+
+  /* Notification */
+  .notification {
+    position: absolute; top: 42px; left: 50%; transform: translateX(-50%);
+    z-index: 200; padding: 9px 20px; border-radius: 18px;
+    font-size: 12px; font-weight: 600; animation: notifIn 0.5s ease-out;
+    letter-spacing: 1px; pointer-events: none; white-space: nowrap;
+  }
+  .notification.positive { background: linear-gradient(135deg, #7c3aed, #a855f7); color: white; box-shadow: 0 4px 20px
+  rgba(124,58,237,0.4); }
+  .notification.warning { background: linear-gradient(135deg, #f59e0b, #ef4444); color: white; box-shadow: 0 4px 20px
+  rgba(239,68,68,0.4); }
+  .notification.neutral { background: rgba(255,255,255,0.9); color: #5b21b6; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+  .notification.love { background: linear-gradient(135deg, #ec4899, #f472b6); color: white; box-shadow: 0 4px 25px
+  rgba(236,72,153,0.5); font-size: 14px; }
+  @keyframes notifIn { 0% { opacity: 0; transform: translateX(-50%) translateY(-40px); } 100% { opacity: 1; transform:
+  translateX(-50%) translateY(0); } }
+
+  .chara-placeholder { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .chara-placeholder .name-label { font-size: 10px; color: rgba(255,255,255,0.5); letter-spacing: 2px; }
+  </style>
+  </head>
+  <body>
+
+  <div id="game-container">
+
+    <!-- ========== TITLE SCREEN ========== -->
+    <div id="title-screen" class="screen active">
+      <div class="title-stars" id="stars"></div>
+      <div class="title-decor">━ ◈ ━</div>
+      <div class="title-logo">嫂子模拟器</div>
+      <div class="title-sub">楼 娱 篇</div>
+      <div class="title-quote">在那些灯光照不到的地方，在欢呼声消散之后的安静里<br>你看见了一个不属于舞台的人</div>
+      <button class="btn btn-primary" onclick="startQuickGame()">开 始 游 戏</button>
+      <button class="btn btn-secondary" style="margin-top:14px" onclick="showScreen('create-screen')">自 定 义 角 色</button>
+      <button class="btn btn-secondary" style="margin-top:14px" onclick="showLoadScreen()">读 取 存 档</button>
+      <button class="btn btn-secondary" style="margin-top:14px" onclick="showAchievements()">成 就 展 示</button>
+    </div>
+
+    <!-- ========== SAVE/LOAD MODAL ========== -->
+    <div class="modal-overlay" id="save-modal">
+      <div class="modal-box">
+        <h3 id="modal-title">💾 保存进度</h3>
+        <div id="save-slots"></div>
+        <div style="text-align:center;margin-top:14px">
+          <button class="btn btn-secondary btn-small" onclick="closeModal()">关 闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== CHARACTER CREATION ========== -->
+    <div id="create-screen" class="screen">
+      <div class="create-header"><h2>角色创建卡</h2><p class="subtitle">创造属于你的故事主角</p></div>
+      <div class="create-grid">
+        <div class="form-group"><label>姓名</label><input type="text" id="c-name" placeholder="输入你的名字"
+  value="林悦"></div>
+        <div class="form-group"><label>性别</label><select
+  id="c-gender"><option>女</option><option>男</option></select></div>
+        <div class="form-group"><label>年龄（建议20-28岁）</label><input type="number" id="c-age" value="23" min="18"
+  max="35"></div>
+        <div class="form-group"><label>国籍</label><select id="c-nationality"><option>中国</option><option>韩国</option>
+  <option>日本</option><option>美籍华裔</option></select></div>
+        <div class="form-group"><label>外貌简述</label><input type="text" id="c-appearance"
+  value="清秀干净，笑起来有酒窝" placeholder="如：清秀干净、笑起来有酒窝"></div>
+        <div class="form-group"><label>性格（单选）</label><select id="c-personality"><option
+  value="温柔">温柔</option><option value="毒舌">毒舌</option><option value="社恐">社恐</option><option
+  value="万人迷">万人迷</option><option value="冷静">冷静</option><option value="冒失">冒失</option><option
+  value="细腻">细腻</option><option value="倔强">倔强</option><option value="乐天">乐天</option><option
+  value="腹黑">腹黑</option></select></div>
+        <div class="form-group"><label>追星史（几年/追过谁）</label><input type="text" id="c-fan-history"
+  value="3年，追过TNT" placeholder="如：3年，追过TNT"></div>
+        <div class="form-group form-full"><label>一句话描述你自己</label><textarea id="c-self-desc"
+  placeholder="简短描述你的故事">一个怀揣梦想来到北京的普通女孩，相信努力和真诚能带来好运。</textarea></div>
+      </div>
+      <div style="text-align:center;margin-top:16px">
+        <button class="btn btn-secondary btn-small" onclick="showScreen('title-screen')" style="margin-right:10px">←
+  返回</button>
+        <button class="btn btn-primary" onclick="confirmCreate()">下一步 →</button>
+      </div>
+    </div>
+
+    <!-- ========== IDENTITY SELECTION ========== -->
+    <div id="identity-screen" class="screen">
+      <div class="create-header"><h2>选择开局身份</h2><p class="subtitle">不同的身份，不同的故事</p></div>
+      <div class="identity-grid" id="identity-grid"></div>
+      <div style="text-align:center;margin-top:16px">
+        <button class="btn btn-secondary btn-small" onclick="showScreen('create-screen')" style="margin-right:10px">←
+  返回</button>
+        <button class="btn btn-primary" id="btn-confirm-identity" onclick="confirmIdentity()" disabled>下一步 →</button>
+      </div>
+    </div>
+
+    <!-- ========== TARGET SELECTION ========== -->
+    <div id="target-screen" class="screen">
+      <div class="create-header"><h2>选择目标艺人</h2><p class="subtitle">你想接近谁？</p></div>
+      <div class="target-grid" id="target-grid"></div>
+      <div style="text-align:center;margin-top:16px">
+        <button class="btn btn-secondary btn-small" onclick="showScreen('identity-screen')" style="margin-right:10px">←
+  返回</button>
+        <button class="btn btn-primary" id="btn-confirm-target" onclick="confirmTarget()" disabled>下一步 →</button>
+      </div>
+    </div>
+
+    <!-- ========== ATTRIBUTE ALLOCATION ========== -->
+    <div id="attr-screen" class="screen">
+      <div class="create-header"><h2>属性分配</h2><p class="subtitle" id="attr-sub">剩余点数：15</p></div>
+      <div class="attr-panel" id="attr-panel"></div>
+      <div style="text-align:center;margin-top:16px">
+        <button class="btn btn-secondary btn-small" onclick="showScreen('target-screen')" style="margin-right:10px">←
+  返回</button>
+        <button class="btn btn-primary" id="btn-confirm-attr" onclick="confirmAttributes()" disabled>开 始 游
+  戏</button>
+      </div>
+    </div>
+
+    <!-- ========== GAME SCREEN ========== -->
+    <div id="game-screen" class="screen">
+      <div class="game-menu-bar">
+        <button class="menu-btn" onclick="showSaveModal()">💾 存档</button>
+        <button class="menu-btn" onclick="showLoadModal()">📂 读档</button>
+        <button class="menu-btn" style="color:#fca5a5" onclick="exitToTitle()">🚪 退出</button>
+      </div>
+      <div class="game-main">
+        <div class="game-left">
+          <div class="mini-chara">
+            <div class="chara-placeholder">
+              <div class="chara-body" id="chara-display">🎭</div>
+              <span class="name-label" id="chara-stage-label">陌生人</span>
+            </div>
+          </div>
+          <div class="panel-block">
+            <h3>📅 时间</h3>
+            <div style="font-size:14px;font-weight:700;letter-spacing:1px"><span id="gs-week">第1周</span></div>
+            <div style="font-size:12px;color:#c084fc;margin-top:2px"><span id="gs-day">星期一</span> · <span
+  id="gs-time-of-day">上午</span></div>
+            <div class="action-remaining"><span>剩余行动：</span><span id="gs-action-dots"></span></div>
+          </div>
+          <div class="panel-block">
+            <h3>👤 身份</h3>
+            <div style="font-size:13px;font-weight:700" id="gs-name">---</div>
+            <div style="font-size:11px;color:#a78bfa" id="gs-identity">---</div>
+          </div>
+          <div class="panel-block"><h3>✨ 属性</h3><div id="gs-attrs"></div></div>
+          <div class="panel-block"><h3>🎯 <span id="gs-target-name">---</span></h3><div id="gs-relations"></div></div>
+          <div class="panel-block" id="panel-love" style="display:none"><h3>💝 爱情进度</h3><div
+  id="gs-love"></div></div>
+          <div class="panel-block"><h3>📌 进度</h3><div id="gs-todo"
+  style="font-size:11px;color:#d1d5db;line-height:1.6">开始新的一天</div></div>
+        </div>
+        <div class="game-right">
+          <div class="scene-area" id="scene-content"></div>
+          <div class="dialogue-box" id="dialogue-box">
+            <div class="dialogue-speaker" id="speaker-name"></div>
+            <div class="dialogue-text" id="dialogue-text"></div>
+            <div class="choices" id="choices-container"></div>
+            <div id="continue-container"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== ENDING SCREEN ========== -->
+    <div id="ending-screen" class="screen">
+      <div class="ending-type-label" id="ending-type-label"></div>
+      <div class="ending-title" id="ending-title"></div>
+      <div class="ending-desc" id="ending-desc"></div>
+      <div class="ending-stats" id="ending-stats"></div>
+      <button class="btn btn-primary" onclick="location.reload()">重 新 开 始</button>
+      <button class="btn btn-secondary" style="margin-top:12px" onclick="showScreen('title-screen');document.getElementById('ending-screen').classList.remove('active');">返回主菜单</button>
+    </div>
+
+    <!-- ========== ACHIEVEMENT SCREEN ========== -->
+    <div id="achievement-screen" class="screen">
+      <div class="ach-header">
+        <h2>成就展示</h2>
+        <p class="subtitle">「 所有的相遇，都值得被铭记 」</p>
+      </div>
+      <div class="ach-grid" id="ach-grid"></div>
+      <div style="text-align:center;margin-top:20px">
+        <button class="btn btn-secondary btn-small" onclick="showScreen('title-screen')">← 返回主菜单</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+  // ==========================================
+  // GAME ENGINE - 嫂子模拟器 楼娱篇
+  // ==========================================
+
+  const identities = [
+    { id:'staff', name:'经纪公司新人职员', icon:'💼', role:'经纪人助理 / 行程协调 / 艺人管理部新人',
+  desc:'你大学毕业后来到这家经纪公司，负责杂务协调。每天能近距离看到艺人的真实状态，但也最清楚这个圈子的规则——恋爱就是失业。你小心翼翼地维护着自己的专业形象，把那些不该有的念头藏在心底。', stats:'行业认知+15 | 接触机会+20 | 自由度-10',
+  bonuses:{professional:5,connections:15} },
+    { id:'stylist', name:'造型师/化妆师助理', icon:'💄', role:'跟组化妆、服装搭配、造型设计',
+  desc:'你毕业于知名美妆学院，跟随资深造型师跑组。帮艺人整理衣领、补妆时指尖最近距离只有三厘米——这是唯一有正当理由进行肢体接触的岗位。但你也看过太多艺人卸妆后疲惫的脸。', stats:'审美+15 | 亲密合理性+15 | 稳定性-10',
+  bonuses:{charm:5,intimacy_base:8} },
+    { id:'fansite', name:'知名站姐', icon:'📸', role:'运营大型粉丝站，拥有数万粉丝', desc:'你的相机里存了几万张照片，每一张都能卖出几百份PB。有人说你是"粉丝经济"，但你只是想离他近一点。你在饭圈地位极高，但也时刻生活在身份曝光的恐惧中。',
+   stats:'粉圈影响力+25 | 舆论敏感度+15 | 隐蔽性-15', bonuses:{charm:5,stealth:-15,risk_mod:10} },
+    { id:'journalist', name:'娱乐记者/编辑', icon:'📰', role:'采访艺人、撰写报道、参加发布会',
+  desc:'新闻系毕业后你进了一家知名娱媒。你有正当理由一对一采访，但你也清楚——在艺人眼里，记者和他们是天生的对立面。你试着用最专业的笔触写下最客观的报道，但写到他的名字时，键盘总是停顿几秒。', stats:'信息获取+25 | 社交广度+15 |信任壁垒+20', bonuses:{professional:10,trust_barrier:15,connections:5} },
+    { id:'rich', name:'财阀二代/富家子弟', icon:'💎', role:'以投资方/赞助商关系出入娱乐圈',
+  desc:'你有一个让所有人都对你客客气气的姓氏。品牌活动、庆功宴、商务饭局——你能用资源砸出任何接触机会。但你也分不清那些对你笑的人，是真的喜欢你，还是喜欢你的资源。', stats:'资源值+30 | 社会地位+25 | 真诚度-20',
+  bonuses:{charm:10,connections:8} },
+    { id:'trainee', name:'同公司练习生/新人艺人', icon:'🎤', role:'与目标艺人前后辈关系',
+  desc:'你在同一个练习室挥汗如雨，在同一个食堂打饭，甚至参加过同一场月末考核。你们之间的距离——有时候是同一层楼的两个练习室，有时候是出道和未出道的差距。', stats:'圈内理解度+20 | 共同语言+20 | 事业压力+15',
+  bonuses:{professional:5,intimacy_base:5} }
+  ];
+
+  const targets = [
+    { name:'马嘉祺', group:'TNT时代少年团', emoji:'🎵' },{ name:'丁程鑫', group:'TNT时代少年团', emoji:'💃' },
+    { name:'宋亚轩', group:'TNT时代少年团', emoji:'🌟' },{ name:'刘耀文', group:'TNT时代少年团', emoji:'🐺' },
+    { name:'张真源', group:'TNT时代少年团', emoji:'🎸' },{ name:'严浩翔', group:'TNT时代少年团', emoji:'🐱' },
+    { name:'贺峻霖', group:'TNT时代少年团', emoji:'🌙' },{ name:'朱志鑫', group:'TOP登陆少年', emoji:'🔥' },
+    { name:'张泽禹', group:'TOP登陆少年', emoji:'🎧' },{ name:'左航', group:'TOP登陆少年', emoji:'✨' },
+    { name:'张极', group:'TOP登陆少年', emoji:'🦋' },{ name:'苏新皓', group:'TOP登陆少年', emoji:'⭐' },
+    { name:'敖子逸', group:'Solo艺人', emoji:'🎬' },{ name:'姚景元', group:'Solo艺人', emoji:'🎹' },
+    { name:'张峻豪', group:'Solo艺人', emoji:'🎪' },{ name:'余宇涵', group:'Solo艺人', emoji:'🌸' },
+    { name:'王源', group:'TFBOYS/Solo', emoji:'🎤' },{ name:'王俊凯', group:'TFBOYS/Solo', emoji:'👑' },
+    { name:'易烊千玺', group:'TFBOYS/Solo', emoji:'🎬' },{ name:'王橹杰', group:'时代峰峻四代', emoji:'🌿' }
+  ];
+
+  const attrDefs = [
+    { id:'charm', name:'魅力', icon:'✨', desc:'外在吸引力+气质+穿搭品味 → 第一印象' },
+    { id:'eq', name:'情商', icon:'🧠', desc:'察言观色、说话分寸 → 对话选项、危机公关' },
+    { id:'professional', name:'专业度', icon:'💼', desc:'本职工作的能力水平 → 工作评价、岗位稳定' },
+    { id:'stealth', name:'隐蔽性', icon:'🕶️', desc:'保密能力、避开狗仔视线 → 私下接触安全' },
+    { id:'connections', name:'人脉', icon:'🤝', desc:'圈内关系网的广度与深度 → 信息、机会' },
+    { id:'mental', name:'心理韧性', icon:'💪', desc:'抗压能力、承受力 → 状态恢复、决策质量' }
+  ];
+
+  const achievementDefs = [
+    { id:'first_contact', name:'初次接触', icon:'👋', desc:'好感度首次达到10' },
+    { id:'favor_30', name:'暗送秋波', icon:'💗', desc:'好感度达到30' },
+    { id:'favor_60', name:'心生欢喜', icon:'💕', desc:'好感度达到60' },
+    { id:'favor_100', name:'恋爱达成', icon:'💝', desc:'好感度达到100，进入恋爱模式' },
+    { id:'trust_50', name:'心有灵犀', icon:'🔒', desc:'信任度达到50' },
+    { id:'trust_80', name:'推心置腹', icon:'🔓', desc:'信任度达到80' },
+    { id:'intimacy_50', name:'亲密无间', icon:'💫', desc:'亲密度达到50' },
+    { id:'intimacy_80', name:'心有灵犀', icon:'💓', desc:'亲密度达到80' },
+    { id:'love_100', name:'百年好合', icon:'💒', desc:'爱情值达到100，步入婚姻殿堂' },
+    { id:'exposure', name:'身败名裂', icon:'💔', desc:'曝光风险过高导致游戏失败' },
+    { id:'survive', name:'幸存者', icon:'🛡️', desc:'完成全部52周且从未触发高危风险' },
+    { id:'week52', name:'一轮游', icon:'🏆', desc:'完成全部52周游戏' }
+  ];
+
+  // --- Game State ---
+  const gs = {
+    player: { name:'', gender:'女', age:23, nationality:'中国', appearance:'', personality:'', fanHistory:'',
+  selfDesc:'' },
+    identity: null, target: null,
+    attrs: { charm:5, eq:5, professional:5, stealth:5, connections:5, mental:5 },
+    relations: { favor:0, trust:2, intimacy:0, risk:5, love:0 },
+    week:1, day:0, timeSlot:0, remainingActions:2,
+    eventFlags: {}, totalWeeks:52, recentEvents:[],
+    achievements: {}, loveMode: false, ended: false
+  };
+
+  function tn() { return gs.target ? gs.target.name : '目标艺人'; }
+  function dayName() { return ['星期一','星期二','星期三','星期四','星期五','星期六','星期日'][gs.day]; }
+  function slotName() { return ['上午','下午','晚上'][gs.timeSlot]; }
+  function stageName() { const f=gs.relations.favor, t=gs.relations.trust, i=gs.relations.intimacy;
+  if(f>=95&&t>=95)return'深爱'; if(f>=85&&t>=80)return'恋人'; if(f>=75&&t>=65)return'试探';
+  if(f>=60&&t>=50)return'暧昧'; if(f>=45&&t>=30)return'朋友'; if(f>=25&&t>=15)return'熟悉';
+  if(f>=10&&t>=5)return'有印象'; return'陌生人'; }
+  function riskLevel() { const r=gs.relations.risk; if(r>=80)return{label:'⚫ 爆炸',color:'#1a1a1a'};
+  if(r>=60)return{label:'🔴 高危',color:'#dc2626'}; if(r>=40)return{label:'🟠 危险',color:'#ea580c'};
+  if(r>=20)return{label:'🟡 微妙',color:'#ca8a04'}; return{label:'🟢 安全',color:'#16a34a'}; }
+
+  // --- Helpers ---
+  function showScreen(id) { document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active'); }
+  function changeRel(type, amt) {
+    if(type==='favor') gs.relations.favor=Math.max(-100,Math.min(100,gs.relations.favor+amt));
+    else if(type==='trust') gs.relations.trust=Math.max(0,Math.min(100,gs.relations.trust+amt));
+    else if(type==='intimacy') gs.relations.intimacy=Math.max(0,Math.min(100,gs.relations.intimacy+amt));
+    else if(type==='risk') gs.relations.risk=Math.max(0,Math.min(100,gs.relations.risk+amt));
+    else if(type==='love') gs.relations.love=Math.max(0,Math.min(100,gs.relations.love+amt));
+  }
+  function changeAttr(id, amt) { gs.attrs[id]=Math.max(0,Math.min(99,gs.attrs[id]+amt)); }
+
+  function showNotif(msg, type) {
+    const n=document.createElement('div'); n.className='notification '+(type||'positive');
+    n.textContent=msg; document.getElementById('game-container').appendChild(n);
+    setTimeout(()=>{n.style.opacity='0';n.style.transition='opacity 0.3s';},2200);
+    setTimeout(()=>n.remove(),2600);
+  }
+
+  function checkAchievements() {
+    const a=gs.achievements, r=gs.relations;
+    if(r.favor>=10&&!a.first_contact){a.first_contact=true;showNotif('🏆 成就解锁：初次接触','love');}
+    if(r.favor>=30&&!a.favor_30){a.favor_30=true;showNotif('🏆 成就解锁：暗送秋波','love');}
+    if(r.favor>=60&&!a.favor_60){a.favor_60=true;showNotif('🏆 成就解锁：心生欢喜','love');}
+    if(r.favor>=100&&!a.favor_100){a.favor_100=true;showNotif('🏆 成就解锁：恋爱达成','love');}
+    if(r.trust>=50&&!a.trust_50){a.trust_50=true;showNotif('🏆 成就解锁：心有灵犀','love');}
+    if(r.trust>=80&&!a.trust_80){a.trust_80=true;showNotif('🏆 成就解锁：推心置腹','love');}
+    if(r.intimacy>=50&&!a.intimacy_50){a.intimacy_50=true;showNotif('🏆 成就解锁：亲密无间','love');}
+    if(r.intimacy>=80&&!a.intimacy_80){a.intimacy_80=true;showNotif('🏆 成就解锁：心有灵犀','love');}
+    if(r.love>=100&&!a.love_100){a.love_100=true;showNotif('🏆 成就解锁：百年好合','love');}
+  }
+
+  function checkExposure() {
+    if(gs.relations.risk>=95&&!gs.ended) {
+      gs.achievements.exposure=true;
+      triggerExposureEnding();
+    }
+  }
+
+  function triggerExposureEnding() {
+    gs.ended=true;
+    document.getElementById('ending-type-label').textContent='💔 曝光结局 · 游戏失败';
+    document.getElementById('ending-type-label').style.color='#ef4444';
+    document.getElementById('ending-title').textContent='身败名裂';
+    document.getElementById('ending-desc').textContent='狗仔的长焦镜头拍到了你们在一起的照片。热搜爆了，粉丝崩溃，公司紧急公关。'+tn()+'的经纪人站在你面前，用冰冷的语气说："请你离开，永远不要再出现在他面前。"\n\n你删掉了所有社交账号，换了手机号码。一周后，'+tn()+'的经纪公司发布声明——"艺人目前单身，专注于事业。"\n\n你看着那篇声明，很久很久，然后关掉了手机。';
+    document.getElementById('ending-stats').innerHTML='好感度 '+gs.relations.favor+' · 曝光风险 '+gs.relations.risk+'<br>身份：'+(gs.identity?gs.identity.name:'---')+' · 目标：'+tn();
+    showScreen('ending-screen');
+  }
+
+  function checkLoveMode() {
+    if(gs.relations.favor>=100&&!gs.loveMode) {
+      gs.loveMode=true;
+      showNotif('💝 '+tn()+'向你表白了！你们进入了恋爱关系！','love');
+      setTimeout(()=>showNotif('💝 新状态解锁：爱情值。恋爱中的互动将积累爱情值！','love'),2500);
+    }
+  }
+
+  function updateGameUI() {
+    document.getElementById('gs-week').textContent='第 '+gs.week+' 周';
+    document.getElementById('gs-day').textContent=dayName();
+    document.getElementById('gs-time-of-day').textContent=slotName();
+    document.getElementById('gs-name').textContent=gs.player.name;
+    document.getElementById('gs-identity').textContent=gs.identity?gs.identity.name:'---';
+    document.getElementById('gs-target-name').textContent=tn();
+    const maxA=gs.day<5?2:3;
+    let dots='';
+    for(let i=0;i<maxA;i++) dots+='<span class="action-dot '+(i<gs.remainingActions?'avail':'used')+'"></span>';
+    document.getElementById('gs-action-dots').innerHTML=dots;
+
+    let ah='';
+    for(const a of attrDefs) ah+='<div class="stat-row"><span>'+a.icon+' '+a.name+'</span><span class="val">'+gs.attrs[a.id]+'</span></div>';
+    document.getElementById('gs-attrs').innerHTML=ah;
+
+    const r=gs.relations, fp=Math.max(0,Math.min(100,(r.favor+100)/2)), rl=riskLevel();
+    document.getElementById('gs-relations').innerHTML=''+
+      '<div class="stat-row"><span>💗 好感度</span><span class="val">'+r.favor+'</span></div>'+
+      '<div class="stat-bar"><div class="stat-bar-fill favor" style="width:'+fp+'%"></div></div>'+
+      '<div class="stat-row"><span>🔒 信任度</span><span class="val">'+r.trust+'</span></div>'+
+      '<div class="stat-bar"><div class="stat-bar-fill trust" style="width:'+r.trust+'%"></div></div>'+
+      '<div class="stat-row"><span>💫 亲密度</span><span class="val">'+r.intimacy+'</span></div>'+
+      '<div class="stat-bar"><div class="stat-bar-fill intimacy" style="width:'+r.intimacy+'%"></div></div>'+
+      '<div class="stat-row"><span>📸 曝光风险</span><span class="val">'+r.risk+'</span></div>'+
+      '<div class="stat-bar"><div class="stat-bar-fill risk" style="width:'+r.risk+'%"></div></div>'+
+      '<div style="text-align:center;margin-top:2px"><span class="risk-badge" style="background:'+rl.color+';color:white">'+rl.label+'</span></div>'+
+      '<div class="stage-badge">'+stageName()+'</div>';
+
+    // Love panel
+    const lovePanel=document.getElementById('panel-love');
+    if(gs.loveMode) {
+      lovePanel.style.display='block';
+      document.getElementById('gs-love').innerHTML=''+
+        '<div class="stat-row"><span>💝 爱情值</span><span class="val">'+r.love+'</span></div>'+
+        '<div class="stat-bar"><div class="stat-bar-fill love" style="width:'+r.love+'%"></div></div>'+
+        '<div class="love-badge">'+tn()+'的恋人</div>';
+    } else {
+      lovePanel.style.display='none';
+    }
+
+    const sm={'陌生人':'🎭','有印象':'👀','熟悉':'😊','朋友':'🤗','暧昧':'💕','试探':'💓','恋人':'💗','深爱':'💝'};
+    document.getElementById('chara-display').textContent=sm[stageName()]||'🎭';
+    document.getElementById('chara-stage-label').textContent=gs.loveMode?tn()+'的恋人':stageName();
+  }
+
+  function showScene(html) {
+    document.getElementById('scene-content').innerHTML=''+
+      '<div class="scene-week-header"><span class="week-badge">第'+gs.week+'周 · '+dayName()+'</span><span class="week-divider"></span><span style="color:#a78bfa;font-size:12px;letter-spacing:1px">'+slotName()+'</span></div>'+
+      '<div class="scene-text">'+html+'</div>';
+    document.getElementById('scene-content').scrollTop=0;
+  }
+  function showDialogue(speaker, text) {
+    document.getElementById('speaker-name').textContent=speaker;
+    document.getElementById('dialogue-text').textContent=text;
+    document.getElementById('choices-container').innerHTML='';
+    document.getElementById('continue-container').innerHTML='';
+  }
+  function showChoices(choices) {
+    const container=document.getElementById('choices-container'); container.innerHTML='';
+    const letters=['A','B','C','D','E'];
+    choices.forEach((c,i)=>{
+      const btn=document.createElement('button');
+      btn.className='choice-btn'+(c.locked?' locked':'');
+      btn.innerHTML=c.locked?'<span class="letter">'+letters[i]+'.</span>🔒 '+c.label+' <smallstyle="opacity:0.5">('+c.req+')</small>':'<span class="letter">'+letters[i]+'.</span>'+c.label+(c.hint?' <smallstyle="opacity:0.6">'+c.hint+'</small>':'');
+      btn.onclick=c.locked?null:()=>c.action();
+      container.appendChild(btn);
+    });
+  }
+
+  // ==========================================
+  // DIVERSE ACTION CONTENT POOLS
+  // ==========================================
+  function pick(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
+
+  // Return identity-specific prefix for narrative flavor
+  function idFlavor() {
+    const id=gs.identity?gs.identity.id:'staff';
+    switch(id) {
+      case 'staff': return pick(['作为新人职员，','在公司里摸爬滚打一段时间后，','处理完手头的工作，']);
+      case 'stylist': return pick(['提着化妆箱走进化妆间，','在造型室里整理完衣架，','帮艺人补完妆后，']);
+      case 'fansite': return pick(['收起长焦镜头，','整理完今天拍的图，','在粉丝站的后台处理完订单，']);
+      case 'journalist': return pick(['写完今天的稿件，','从发布会回来后，','收起录音笔，']);
+      case 'rich': return pick(['处理完几个商务电话后，','从一个品牌活动中脱身出来，','叫司机把车停在路边，']);
+      case 'trainee': return pick(['练完舞大汗淋漓地，','从练习室出来后，','在月末考核的间隙，']);
+      default: return '';
+    }
+  }
+
+  function actionWork() {
+    const t=tn(), fl=idFlavor(), im=gs.relations.intimacy;
+    const basePool=[
+      { text:fl+'你处理完了今天的行程表格。<span class="narration">每一项都核对无误，你不允许自己出错。</span>', prof:2
+  },
+      { text:fl+'你帮'+t+'的团队整理了一整天的物料申请单。<span class="narration">虽然枯燥，但你对TA的工作内容有了更深的了解。</span>', prof:2, eq:1 },
+      { text:fl+'你在办公室协调了三个采访和两个拍摄的时间。<span class="narration">同事们说你是"人形日程表"。</span>',
+  prof:3, connections:1 },
+      { text:'今天的任务是跟组到摄影棚。你提前半小时到场，确认了所有的流程和人员。<span class="narration">专业就是细节。</span>', prof:2, extra(){ changeAttr('eq',1); } },
+      { text:fl+'你花了整个下午整理了一份详细的竞品分析报告。上司看后愣了一下，<span class="emphasis">说"做得不错"。</span>在圈内，"不错"已经是极高的评价了。', prof:3, mental:1 },
+      { text:'你负责的环节出了一点小差错——话筒在录制前没电了。你在三十秒内找到了备用话筒。<span class="narration">危机化解于无声。</span>', prof:2, extra(){ changeAttr('mental',1); } },
+      { text:'公司开了一整天的策划会，你在角落里记了满满三页笔记。<span class="narration">你从来都是准备最充分的那个人。</span>', prof:2, connections:1 },
+    ];
+    const highImPool=[
+      { text:fl+'工作中，'+t+'恰好路过你的工位。TA看了你一眼，嘴角似乎弯了弯。<span class="thought">你假装专注于屏幕，但心跳在加速。</span>', prof:1, extra(){ changeRel('favor',2); } },
+      { text:'团队加班时，'+t+'的助理给你递了一杯咖啡。<span class="emphasis">"TA说今天辛苦了，特意让我送过来的。"</span>你捧着那杯咖啡，手心有点热。', prof:1, extra(){
+  changeRel('intimacy',1); } },
+    ];
+    const pool=im>=40?basePool.concat(highImPool):basePool;
+    const r=pick(pool);
+    if(r.prof) changeAttr('professional', r.prof + Math.floor(Math.random()*2));
+    if(r.eq) changeAttr('eq', r.eq);
+    if(r.connections) changeAttr('connections', r.connections);
+    if(r.mental) changeAttr('mental', r.mental);
+    if(r.extra) r.extra();
+    return r.text;
+  }
+
+  function actionOvertime() {
+    const t=tn(), fl=idFlavor();
+    const pool=[
+      { text:fl+'你加班到深夜，把未来两周的日程都提前安排好了。<span class="narration">窗外北京城的灯火渐渐稀疏，你揉了揉发酸的眼睛。</span>', prof:3, mental:-1 },
+      { text:'临时接到通知——'+t+'的航班改签了。你连夜调整了接送方案和酒店预订。<span class="narration">这一行就是这样，计划永远赶不上变化。</span>', prof:2, mental:-1, extra(){ changeAttr('stealth',1); }
+   },
+      { text:fl+'你帮同事代了一个夜班。虽然很累，但对方欠了你一个人情。<span class="narration">在这个圈子里，人情比什么都值钱。</span>', prof:1, connections:2, mental:-2 },
+      { text:'上司临时布置了一个紧急任务，你做完了所有准备工作。<span class="emphasis">"还好有你。"</span>上司说。这句话让疲惫也变得不那么难熬。', prof:3, connections:1, mental:-1 },
+      { text:'你在办公室通宵整理物料。凌晨四点去自动贩卖机买了咖啡。<span class="narration">走廊里遇到同样加班的同事，相视苦笑。</span>', prof:2, connections:1, mental:-2 },
+    ];
+    const r=pick(pool);
+    if(r.prof) changeAttr('professional', r.prof+Math.floor(Math.random()*2));
+    if(r.connections) changeAttr('connections', r.connections);
+    if(r.mental) changeAttr('mental', r.mental);
+    if(r.extra) r.extra();
+    return r.text;
+  }
+
+  function actionSocial() {
+    const t=tn(), fl=idFlavor();
+    const pool=[
+      { text:fl+'你和几个同事去吃了公司楼下的火锅。席间有人说起'+t+'最近的行程——TA可能接下了一部新剧。<span class="narration">火锅的热气中，信息在不动声色地流动。</span>', connections:2, eq:1 },
+      { text:'午休时你和隔壁部门的同事一起喝咖啡。对方无意间透露了一些关于公司近期人事调整的消息。<span class="narration">有些信息，只在闲聊中出现。</span>', connections:2, extra(){ changeAttr('eq',1); } },
+      { text:fl+'你参加了团队的生日聚餐。在轻松的氛围中，你和平时不怎么说话的几个同事也熟络了起来。<span class="narration">原来每个人都有自己在这个圈子里的生存之道。</span>', connections:2, mental:1 },
+      { text:'你帮一位同事解决了工作上的麻烦。对方感激不尽，表示以后有消息会第一个告诉你。<span class="narration">善意的种子总会发芽。</span>', connections:3 },
+      { text:'你在公司茶水间遇到了几位资历很深的经纪人。你虚心请教了几个问题，对方似乎很欣赏你的态度。<span class="emphasis">"你比大多数新人懂事。"</span>', connections:2, prof:1 },
+    ];
+    const r=pick(pool);
+    if(r.prof) changeAttr('professional', r.prof);
+    if(r.connections) changeAttr('connections', r.connections+Math.floor(Math.random()*2));
+    if(r.eq) changeAttr('eq', r.eq);
+    if(r.mental) changeAttr('mental', r.mental);
+    if(r.extra) r.extra();
+    return r.text;
+  }
+
+  function actionPublicEvent() {
+    const t=tn(), im=gs.relations.intimacy;
+    let pool;
+    if(im<20) {
+      pool=[
+        { text:'你参加了一场品牌发布会。<span class="highlight">'+t+'</span>也在现场，你远远地看到TA在人群中发光的样子。活动结束后你在走廊里远远望了一眼。<span class="thought">那一个瞬间，你觉得今天的一切都值得了。</span>', favor:2, intimacy:1 },
+        { text:'发布会结束后你帮忙收拾场地。'+t+'的经纪人临时找人搬物料，你被喊去了。TA从你身边走过，没有注意到你。<span class="narration">但你已经很满足了。</span>', favor:2, trust:1 },
+        { text:'节目录制现场，'+t+'的表演精彩绝伦。散场时TA的视线扫过观众席。<span class="narration">也许只是你的错觉。</span>', favor:2, connections:1 },
+      ];
+    } else if(im<50) {
+      pool=[
+        { text:'你参加了一场品牌发布会。<span class="highlight">'+t+'</span>也在现场。活动结束后在走廊里擦肩而过，TA对你微微点了点头。<span class="thought">那个瞬间，你觉得今天的一切都值得了。</span>', favor:3, intimacy:1 },
+        { text:'节目录制现场，'+t+'的表演精彩绝伦。散场时TA的视线扫过观众席，似乎在找什么人——目光在你身上停了一秒。<span class="narration">也许不是错觉。</span>', favor:3, connections:1 },
+        { text:'你在后台远远地看到了'+t+'。TA似乎刚结束一段采访，脸上还带着营业式的微笑。但当TA走进休息室、门关上的瞬间，你看到TA的笑容消失了。<span class="thought">原来光鲜的背后，是另一种疲惫。</span>', favor:2, intimacy:2 },
+        { text:'发布会结束后你帮忙收拾场地。'+t+'的经纪人临时找人搬物料，你被喊去了。TA礼貌地对你说了声"辛苦了"。<span class="narration">你已经很满足了。</span>', favor:3, trust:1 },
+      ];
+    } else {
+      pool=[
+        { text:'你参加了一场品牌发布会。<span class="highlight">'+t+'</span>也在现场。活动结束后在走廊里，TA主动走过来和你聊了几句。<span class="thought">周围没人注意到，但你觉得整个世界都安静了。</span>', favor:4, intimacy:2 },
+        { text:'你去了'+t+'的签售会现场。轮到你的时候，TA抬头看了你一眼——那一秒的对视，TA的瞳孔微微放大了。<span class="emphasis">TA认出你了。</span>', favor:3, intimacy:3, risk:3 },
+        { text:'今天有一场大型音乐节。你在后台区看到'+t+'做热身——闭着眼睛，深呼吸，表情认真得让人不敢打扰。<span class="narration">这是你在台前永远看不到的一面。</span>', intimacy:3 },
+        {
+  text:'节目录制现场，'+t+'在台上表演时，灯光突然扫到了你所在的区域。TA的目光和你对上，嘴角的笑似乎多了一点温度。<span class="thought">你知道那不是营业。</span>', favor:4, intimacy:2, trust:2 },
+      ];
+    }
+    const r=pick(pool);
+    changeAttr('connections', 1+Math.floor(Math.random()*2));
+    if(r.favor) changeRel('favor', r.favor+Math.floor(Math.random()*2));
+    if(r.trust) changeRel('trust', r.trust);
+    if(r.intimacy) changeRel('intimacy', r.intimacy);
+    if(r.risk) changeRel('risk', r.risk);
+    return r.text;
+  }
+
+  function actionChanceEncounter() {
+    const t=tn();
+    const stealth=gs.attrs.stealth+Math.floor(Math.random()*10);
+    if(stealth>=12) {
+      const pool=[
+        '你"恰好"在公司楼下的咖啡店遇到了<span class="highlight">'+t+'</span>。TA正在等咖啡，你自然地走过去打了招呼。你们聊了几句关于咖啡的话题。<span class="narration">一切看起来很自然。没有人会怀疑这是刻意的。</span>',
+        '你在公司附近的面包店里"偶遇"了'+t+'。TA正在纠结选哪个面包，你随口推荐了店里的招牌。<span class="thought">后来你发现TA的助理经常来这家店——每次都买你推荐的那款。</span>',
+        '你在健身房"刚好"遇到了'+t+'。TA戴着帽子很低调，但你一眼就认出来了。你们各自安静地运动，偶尔目光交汇。',
+      ];
+      changeRel('favor',3+Math.floor(Math.random()*3)); changeRel('intimacy',2);
+      return pick(pool);
+    } else if(stealth>=8) {
+      changeRel('favor',1); changeRel('risk',3);
+      return '你试着在<span class="highlight">'+t+'</span>常去的区域等待，确实遇到了TA。但你的出现时机似乎有些凑巧，TA的助理多看了你两眼。<span class="narration">还好，TA本人并没有表现出什么异样。</span>';
+    } else {
+      changeRel('favor',-2); changeRel('risk',8); changeRel('trust',-3);
+      showNotif('⚠️ 曝光风险大幅上升！','warning');
+      return '你的"偶遇"太明显了。<span class="highlight">'+t+'</span>的经纪人注意到了你——这是你本周第三次出现在TA的行程附近。经纪人径直走过来，语气冷淡地问你有什么事。<span class="emphasis">TA在一旁看你的眼神也变得警惕起来。</span>';
+    }
+  }
+
+  function actionMessageThrough() {
+    const t=tn();
+    if(gs.attrs.connections<8) return '你试图通过认识的人传话，但你在圈内的人脉还不够。你的消息在中间环节就断了。<span class="narration">也许你应该先多交一些朋友。</span>';
+    changeAttr('connections',-1); changeRel('favor',3); changeRel('trust',2); changeRel('risk',2);
+    const pool=[
+      '你通过一个共同认识的工作人员，巧妙地向<span class="highlight">'+t+'</span>传达了问候。<span class="thought">对方反馈说TA收到消息后笑了一下。</span>',
+      '你拜托一位关系不错的造型师帮你在'+t+'面前提了一句。<span class="narration">几天后TA见到你时，好像目光多停留了一秒。</span>',
+      '你让一位同事帮你在合适的时机提到了你的名字。'+t+'的反应很平淡——但至少TA知道了你的存在。',
+    ];
+    return pick(pool);
+  }
+
+  function actionGrooming() {
+    const pool=[
+      '你在健身房泡了两个小时，又去做了个护肤。<span class="narration">镜子里的自己看起来状态好多了。</span>自信是最好的穿搭。',
+      '你逛了一下午买了几件新衣服。试衣间里你拍了几张照片发给朋友，朋友说"这套绝了"。<span class="thought">没错，明天就穿这套。</span>',
+      '你花了时间研究了一个新的穿搭风格，还学了一个新发型。<span class="narration">不为别的——让自己开心也是一种能力。</span>',
+      '你去做了一个新发型。理发师问你要什么风格，你说"看起来精神一点的"。<span class="emphasis">成品出来还不错。</span>',
+      '你难得睡了个懒觉，起来做了个面膜，泡了杯茶。<span class="narration">照顾好自己，才能照顾好别人。</span>',
+      '你出门慢跑了五公里，出了一身汗。<span class="narration">有些焦虑需要排出去——跑步是最好的方式。</span>',
+    ];
+    const r=pick(pool);
+    changeAttr('charm', 1+Math.floor(Math.random()*3));
+    changeAttr('mental', 1);
+    return r;
+  }
+
+  function actionStudy() {
+    const t=tn();
+    const pool=[
+      '你仔细研究了<span class="highlight">'+t+'</span>最近的采访和舞台。<span class="thought">原来TA喜欢喝冰美式，压力大时会揉后颈。这些小细节你都默默记下了。</span>',
+      '你在网上找到了'+t+'的所有公开资料——从出道舞台到最近的直播。<span class="narration">越了解TA，就越觉得TA是一个复杂而真实的人。</span>',
+      '你看了'+t+'最近的一期综艺。TA在节目里自然地接梗、照顾队友、偶尔毒舌——<span class="thought">这些都是真实的TA吗？还是也只是营业的一部分？</span>',
+      '你翻出了'+t+'的旧采访。三年前的TA和现在的TA似乎有些不同——<span class="narration">时间改变了什么，又留下了什么？</span>',
+      '你研究了'+t+'所在团体最近的发展动态：新专辑、巡演计划、成员个人活动。<span class="narration">了解全局，才能找到正确的时机。</span>',
+    ];
+    const r=pick(pool);
+    changeAttr('eq',1); changeRel('favor',2);
+    return r;
+  }
+
+  function actionRest() {
+    const pool=[
+      '你给自己放了个小假。看看综艺、听听音乐，让紧绷的神经松弛下来。<span class="narration">明天醒来，又是一条好汉。</span>',
+      '你煮了一碗泡面，窝在沙发上看了一整晚的电影。<span class="narration">偶尔什么都不想，也是一种奢侈。</span>',
+      '你和朋友出去吃了顿好的，吐槽了一堆工作上的事。笑够了，烦恼也好像轻了很多。<span class="thought">还好有朋友。</span>',
+      '你睡了一个很长的午觉。醒来的时候窗外已经是黄昏了。<span class="narration">这种不赶时间的日子，真好啊。</span>',
+      '你去了一家书店，随便翻了翻书。有一句话碰巧戳中了你：<span class="emphasis">"等待也是一种努力。"</span>',
+      '你一个人去看了场电影。黑暗的影厅里，你和其他陌生人一起笑、一起沉默。<span class="narration">在这个疯狂的世界里，平凡也是一种治愈。</span>',
+    ];
+    const r=pick(pool);
+    changeAttr('mental', 3);
+    return r;
+  }
+
+  function actionGift() {
+    const t=tn();
+    const pool=[
+      '你精心准备了一份小礼物——是'+t+'喜欢的品牌的护手霜。你写了一张措辞得体的卡片，走官方渠道送了出去。<span class="narration">希望TA会喜欢。</span>',
+      '你买了一个精致的笔记本，打算以"工作人员"的身份转交给'+t+'。<span class="thought">TA会不会看出这不是普通的公务物品？</span>',
+      '你定制了一盒马卡龙，每一颗的颜色都不一样。你在卡片上只写了"辛苦了"三个字。<span class="narration">有时候，简单就是最好的表达。</span>',
+    ];
+    const r=pick(pool);
+    changeRel('favor',2); changeAttr('charm',1);
+    return r;
+  }
+
+  function actionLive() {
+    const t=tn();
+    const pool=[
+      '你在<span class="highlight">'+t+'</span>的直播中发了评论。<span class="thought">TA好像注意到了——嘴角微微上扬了一下。</span>',
+      ''+t+'今晚开了直播，你在弹幕里留了一句"今天辛苦了"。<span class="narration">虽然只是千万条弹幕中的一条，但你是真诚的。</span>',
+      '你在'+t+'的直播中发了一条有趣的弹幕，TA居然读了出来，还笑了一下。<span class="emphasis">那一个瞬间，你觉得整个房间都亮了。</span>',
+    ];
+    const r=pick(pool);
+    changeRel('favor',2); changeRel('risk',1);
+    return r;
+  }
+
+  // ==========================================
+  // LOVE MODE ACTIONS
+  // ==========================================
+  function actionDate() {
+    const t=tn();
+    const pool=[
+      '你们约在公司附近的一家私密餐厅吃晚饭。<span class="highlight">'+t+'</span>穿着便装戴着帽子，低调得像个普通大学生。你们聊了很多——从音乐到童年，从天气到梦想。<span class="thought">TA笑起来的时候，你觉得整个城市的灯火都变得柔软了。</span>',
+      '深夜，'+t+'发消息说想看午夜场电影。你犹豫了一秒，然后回复了一个"好"。你们分别入场，在黑暗的影厅里并肩而坐——TA的手碰到你的时候，屏幕上的情节你已经完全不记得了。',
+      '周末下午，你们去了一个安静的公园。'+t+'坐在长椅上，头靠着你的肩膀，很快就睡着了。<span class="narration">你一动不动，连呼吸都放轻了。这是你第一次看到TA完全卸下防备的样子。</span>',
+      '你们在汉江边散步，夜风很凉。'+t+'把围巾取下来递给你，说"我不冷"。<span class="thought">你闻到了围巾上TA的气息——淡淡的皂香。</span>',
+      '今天'+t+'主动给你做了一顿饭——虽然只是泡面加蛋，但你吃了两碗。<span class="emphasis">"下次我做个更好的。"</span>TA认真地说。你点点头，心里已经在期待了。',
+    ];
+    const r=pick(pool);
+    changeRel('love', 3+Math.floor(Math.random()*5));
+    changeRel('favor', 2);
+    changeRel('intimacy', 2);
+    changeRel('risk', 2);
+    return r;
+  }
+
+  function actionDeepTalk() {
+    const t=tn();
+    const pool=[
+
+  '今晚'+t+'看起来很沉重。TA靠在窗边说起了自己刚出道时的那些日子——练习室的汗味、第一次被骂哭、一个人想家的深夜。<span class="narration">你静静地听着，什么都不说，只是坐在TA旁边。</span>',
+
+  ''+t+'突然打电话来，声音很低。"我睡不着。"你们打了两个小时电话——关于未来，关于害怕，关于那些不能对外人说的话。<span class="emphasis">"只有在你这里，我可以不用演。"</span>',
+      '你们聊到了未来。'+t+'说有时候想退圈开一家面包店。<span class="thought">"那你需要一个会做面包的老板娘吗？"你问。TA没有回答，但握住了你的手。</span>',
+      '今天'+t+'看了一部悲伤的电影，哭得稀里哗啦。你手忙脚乱地找纸巾，TA却笑了——原来哭和笑可以同时发生。<span class="narration">然后TA埋在你的肩窝里，很久很久没说话。</span>',
+    ];
+    const r=pick(pool);
+    changeRel('love', 2+Math.floor(Math.random()*4));
+    changeRel('trust', 3);
+    changeRel('favor', 1);
+    changeRel('mental', 1);
+    return r;
+  }
+
+  function actionProtect() {
+    const t=tn();
+    const pool=[
+      '有私生饭跟踪'+t+'被你们发现了。你挡在TA前面，冷静地报了警并联系了经纪人。<span class="narration">事后TA抱着你很久没说一句话。你感觉到TA的身体在微微发抖。</span>',
+      ''+t+'陷入了一场网络争议。你在舆论风暴中心帮TA梳理了所有信息，整理了应对方案。TA看着你熬夜做出来的一摞纸，说了三个字：<span class="emphasis">"有你在。"</span>',
+      '今天'+t+'的经纪人对你们的相处提出了质疑。你主动去向经纪人做了坦诚的沟通——你说你比任何人都希望'+t+'好。<span class="thought">"我不会让TA的事业因为我的存在受到伤害。"</span>',
+    ];
+    const r=pick(pool);
+    changeRel('love', 3+Math.floor(Math.random()*4));
+    changeRel('trust', 4);
+    changeAttr('stealth', 1);
+    changeRel('risk', -2);
+    return r;
+  }
+
+  // --- Action dispatch ---
+  function doAction(descHtml) {
+    showScene('<p style="line-height:2.3;font-size:16px">'+descHtml+'</p>');
+    gs.remainingActions--;
+    updateGameUI();
+    checkAchievements();
+    checkExposure();
+    checkLoveMode();
+
+    if(gs.remainingActions<=0) {
+      // Last action - disable actions, show continue button
+      showDialogue('⏳ 行动次数已用完', '今日行动结束，准备进入下一时刻……');
+      showContinue('进 入 下 一 时 刻 ▸', ()=>advanceTime());
+    } else {
+      // Not last action - auto-show action selection
+      setTimeout(()=>showActionSelection(), 900);
+    }
+  }
+
+  // ==========================================
+  // RANDOM EVENTS
+  // ==========================================
+  function genEvents() {
+    const t=tn(), im=gs.relations.intimacy;
+    const base={
+      industry: [
+        { id:'staff_change', title:'人事变动',
+
+  scene:'公司内部邮件通知：你的直属上司因个人原因即将离职。新来的总监据说风格完全不同，同事们在群里议论纷纷。<span class="narration">这对你的岗位意味着什么？</span>',
+          choices:[
+            { label:'主动找新总监汇报工作，留下好印象', action(){ changeAttr('professional',2);
+  changeAttr('connections',1); showNotif('专业度+2 人脉+1'); proceed(); } },
+            { label:'做好本职工作，静观其变', action(){ changeAttr('mental',1); showNotif('心理韧性+1'); proceed(); } },
+            { label:'趁乱寻找内部调岗机会', action(){ changeAttr('stealth',2); showNotif('隐蔽性+2'); proceed(); } }
+          ]},
+        { id:'comeback', title:'回归期降临',
+          scene:'<span class="highlight">'+t+'</span>所在的团体正式进入回归期！打歌、综艺、签售、媒体采访——行程排得满满当当。',
+          choices:[
+            { label:'主动申请加入回归期工作组', action(){ changeAttr('professional',3); changeRel('favor',3);
+  showNotif('专业度+3 好感度+3'); proceed(); } },
+            { label:'做好分内工作，不主动请缨', action(){ changeAttr('mental',2); showNotif('心理韧性+2'); proceed(); }
+  },
+            { label:'趁大家都忙，找机会接近'+t, action(){ changeRel('intimacy',2); changeRel('risk',3);
+  showNotif('亲密度+2 风险+3'); proceed(); } }
+          ]},
+        { id:'scandal_other', title:'业内爆料',
+          scene:'业内突然传出消息——某位艺人被拍到与圈外人士深夜同行。虽然与你无关，但整个行业都在收紧管理。公司下发了新的行为规范通知。',
+          choices:[
+            { label:'第一时间签署协议，表达配合态度', action(){ changeAttr('professional',2); changeAttr('stealth',1);
+  showNotif('专业度+2 隐蔽性+1'); proceed(); } },
+            { label:'仔细阅读每一条条款再做决定', action(){ changeAttr('eq',2); showNotif('情商+2'); proceed(); } },
+            { label:'向老同事打听细节后再签', action(){ changeAttr('connections',2); showNotif('人脉+2'); proceed(); } }
+          ]}
+      ],
+      social: [
+        { id:'elevator', title:'电梯相遇',
+          scene:'你抱着文件走进电梯，抬头看见<span class="highlight">'+t+'</span>正站在角落里。电梯里只有你们两个人。',
+          choices: im>=30?[
+            { label:'自然地微笑说"今天辛苦了"', action(){ changeRel('favor',4); showNotif('好感度+4'); proceed(); } },
+            { label:'安静地站在一旁，给TA空间', action(){ changeAttr('stealth',2); showNotif('隐蔽性+2'); proceed(); }
+  },
+            { label:'轻声问了一句TA最近的工作情况', action(){ changeRel('favor',3); changeRel('trust',2);
+  showNotif('好感度+3 信任度+2'); proceed(); } }
+          ]:[
+            { label:'自然地点头微笑，"早上好"', action(){ changeRel('favor',3); showNotif('好感度+3'); proceed(); } },
+            { label:'假装看手机，不去打扰', action(){ changeAttr('mental',1); showNotif('心理韧性+1'); proceed(); } },
+            { label:'鼓起勇气说了句"早上好"', action(){ changeRel('favor',2); showNotif('好感度+2'); proceed(); } }
+          ]},
+        { id:'dinner', title:'聚餐同席',
+          scene:'团队聚餐，你被安排坐在了<span class="highlight">'+t+'</span>的斜对面。有人提议玩真心话大冒险。',
+          choices:[
+            { label:'替TA解围，巧妙转移话题', action(){ changeRel('favor',5); changeAttr('eq',1); showNotif('好感度+5情商+1'); proceed(); } },
+            { label:'安静观察，记下TA说的每一个细节', action(){ changeRel('favor',2); showNotif('好感度+2'); proceed();
+  } },
+            { label:'配合气氛，问一个有趣的但不过分的问题', action(){ changeRel('favor',4); changeRel('trust',2);
+  showNotif('好感度+4 信任度+2'); proceed(); } },
+            { label:'趁乱帮TA倒了一杯水，什么都不说', action(){ changeRel('favor',3); changeRel('intimacy',2);
+  showNotif('好感度+3 亲密度+2'); proceed(); } }
+          ]},
+        { id:'practice', title:'练习室门外',
+          scene:'夜深了，路过练习室时听到里面还有音乐声。透过门缝看到<span class="highlight">'+t+'</span>一个人在练习，汗湿的头发贴在额头上。',
+          choices:[
+            { label:'悄悄放下一瓶水在门口，然后离开', action(){ changeRel('favor',5); changeRel('intimacy',4);
+  showNotif('好感度+5 亲密度+4'); proceed(); } },
+            { label:'敲了敲门，问TA要不要一起点宵夜', action(){ changeRel('favor',4); changeRel('trust',3);
+  showNotif('好感度+4 信任度+3'); proceed(); } },
+            { label:'假装没看到，不去打扰TA的私人空间', action(){ changeAttr('mental',2); showNotif('心理韧性+2');
+  proceed(); } }
+          ]},
+        { id:'cafe', title:'咖啡店对话',
+          scene:'你在咖啡店排队，<span class="highlight">'+t+'</span>突然走进来。店里人不多，TA排在了你后面。你闻到了TA身上淡淡的香水味。',
+          choices:[
+            { label:'帮TA点了一杯TA常喝的冰美式', action(){ changeRel('favor',5); changeRel('trust',3);
+  showNotif('好感度+5 信任度+3'); proceed(); } },
+            { label:'装作不认识，专注于自己的点单', action(){ changeAttr('stealth',3); showNotif('隐蔽性+3'); proceed();
+   } },
+            { label:'回头微笑示意，然后自然地离开', action(){ changeRel('favor',3); changeAttr('charm',1);
+  showNotif('好感度+3 魅力+1'); proceed(); } }
+          ]}
+      ],
+      crisis: [
+        { id:'photo', title:'合照被拍',
+          scene:'你在社交媒体上刷到一张照片——是你和<span class="highlight">'+t+'</span>在公司门口的同框照。评论区已有人开始猜测你的身份。',
+          choices:[
+            { label:'什么都不做，相信时间会冲淡一切', action(){ changeRel('risk',8); showNotif('曝光风险+8','warning');
+  proceed(); } },
+            { label:'私信请求博主删除照片', action(){ changeRel('risk',3); changeAttr('stealth',1); showNotif('风险+3隐蔽性+1'); proceed(); } },
+            { label:'请认识的运营帮忙让平台限流', action(){ changeAttr('connections',-2); changeRel('risk',1);
+  showNotif('人脉-2 风险+1'); proceed(); } },
+            { label:'用小号在评论区带歪节奏', action(){ changeAttr('eq',1); changeRel('risk',4); showNotif('情商+1风险+4'); proceed(); } }
+          ]},
+        { id:'sasaeng', title:'私生饭事件',
+          scene:'有私生饭跟踪<span class="highlight">'+t+'</span>到了宿舍楼下。安保已介入，全公司进入高度警戒状态。',
+          choices:[
+            { label:'主动要求参与安保协调工作', action(){ changeAttr('professional',3); changeRel('trust',3);
+  showNotif('专业度+3 信任度+3'); proceed(); } },
+            { label:'关注事件但不主动参与', action(){ changeAttr('stealth',2); showNotif('隐蔽性+2'); proceed(); } },
+            { label:'借机安慰'+t+'，表达关心', action(){ changeRel('favor',4); changeRel('intimacy',3);
+  showNotif('好感度+4 亲密度+3'); proceed(); } },
+            { label:'调查私生饭信息，私下报告给公司', action(){ changeAttr('connections',2); changeAttr('stealth',2);
+  showNotif('人脉+2 隐蔽性+2'); proceed(); } }
+          ]}
+      ],
+      emotional: [
+        { id:'ideal', title:'理想型采访',
+          scene:'<span class="highlight">'+t+'</span>被问到理想型。TA想了想说："<span class="emphasis">喜欢温柔的人吧……就是那种不会给你压力，但你知道TA一直都在的人。</span>"',
+          choices:[
+            { label:'心跳加速但假装不在意，继续工作', action(){ changeRel('intimacy',4); showNotif('亲密度+4');
+  proceed(); } },
+            { label:'理性分析——艺人的采访回答多数是营业', action(){ changeAttr('mental',2); showNotif('心理韧性+2');
+  proceed(); } },
+            { label:'在合适场合委婉提起，观察TA反应', action(){ changeRel('favor',3); changeRel('risk',3);
+  showNotif('好感度+3 风险+3'); proceed(); } },
+            { label:'把采访发给朋友，听听旁观者的看法', action(){ changeAttr('eq',1); changeAttr('connections',1);
+  showNotif('情商+1 人脉+1'); proceed(); } }
+          ]},
+        { id:'cpwar', title:'CP风波',
+          scene:'粉丝们疯狂嗑<span class="highlight">'+t+'</span>和另一位艺人的CP。超话排名飙升。你看着被慢放加滤镜的"糖点合集"，<span class="thought">心里说不出的复杂。</span>',
+          choices:[
+            { label:'告诉自己那是饭圈正常的娱乐', action(){ changeAttr('mental',2); showNotif('心理韧性+2'); proceed();
+  } },
+            { label:'更加努力地在TA面前刷存在感', action(){ changeRel('intimacy',2); changeRel('risk',5);
+  showNotif('亲密度+2 风险+5','warning'); proceed(); } },
+            { label:'研究CP粉话术和逻辑', action(){ changeAttr('eq',1); changeAttr('stealth',2); showNotif('情商+1隐蔽性+2'); proceed(); } },
+            { label:'找机会向TA暗示你知道CP只是拉郎配', action(){ changeRel('favor',3); changeRel('trust',1);
+  showNotif('好感度+3 信任度+1'); proceed(); } }
+          ]},
+        { id:'care', title:'不经意的关心',
+          scene:'今天<span class="highlight">'+t+'</span>看起来状态不好。眼下有淡淡的青色。路过休息室时，TA一个人坐在沙发上，像是短暂地睡着了。',
+          choices:[
+            { label:'轻手轻脚帮TA把滑落的外套盖好', action(){ changeRel('favor',6); changeRel('intimacy',5);
+  showNotif('好感度+6 亲密度+5'); proceed(); } },
+            { label:'拜托助理给TA送一杯热茶', action(){ changeRel('favor',3); changeAttr('eq',1); showNotif('好感度+3情商+1'); proceed(); } },
+            { label:'不去打扰——TA太累了', action(){ changeAttr('mental',2); showNotif('心理韧性+2'); proceed(); } },
+            { label:'在TA醒来时装作刚好路过', action(){ changeRel('favor',4); changeRel('trust',2); showNotif('好感度+4信任度+2'); proceed(); } }
+          ]},
+        { id:'msg', title:'深夜消息',
+          scene:'晚上十一点，你的手机亮了。是一条陌生号码发来的消息。你点开一看——<span class="emphasis">"今天的拍摄谢谢你们团队了，辛苦了。"</span>落款是'+t+'的助理。但你知道，有些消息是TA让助理发的。',
+          choices:[
+            { label:'回复"不客气，应该的"，保持专业', action(){ changeRel('favor',2); changeAttr('professional',1);
+  showNotif('好感度+2 专业度+1'); proceed(); } },
+            { label:'回复一个温暖但不越界的消息', action(){ changeRel('favor',4); changeRel('intimacy',3);
+  showNotif('好感度+4 亲密度+3'); proceed(); } },
+            { label:'不回——太晚了，明天再说', action(){ changeAttr('mental',1); changeAttr('stealth',1);
+  showNotif('心理韧性+1 隐蔽性+1'); proceed(); } }
+          ]}
+      ]
+    };
+
+    // Love mode events - only when in love mode
+    if(gs.loveMode) {
+      base.love=[
+        { id:'love_home', title:'我们的家',
+          scene:''+t+'说想和你一起布置一个属于你们的空间。你们去宜家逛了一下午，TA对一个落地灯特别执着。<span class="emphasis">"以后每次回家看到这盏灯，我就会想到今天的你。"</span>',
+          choices:[
+            { label:'认真挑选每一件家具，就像在搭建未来', action(){ changeRel('love',5); changeRel('intimacy',3);
+  showNotif('爱情+5 亲密度+3'); proceed(); } },
+            { label:'看着TA认真挑选的样子，觉得特别幸福', action(){ changeRel('love',3); changeRel('favor',3);
+  showNotif('爱情+3 好感度+3'); proceed(); } },
+            { label:'提醒TA注意预算，毕竟还要过日子', action(){ changeRel('love',2); changeRel('trust',2);
+  showNotif('爱情+2 信任度+2'); proceed(); } }
+          ]},
+        { id:'love_scar', title:'旧伤疤',
+          scene:'晚上'+t+'撩起袖子的时候你看到了手臂上的一道旧伤疤。TA沉默了一会儿，然后说出了那个故事——出道前最难的那一年。<span class="narration">你握住TA的手，什么都没说。有时候沉默是最好的回答。</span>',
+          choices:[
+            { label:'轻轻吻了一下那道伤疤', action(){ changeRel('love',8); changeRel('intimacy',5); showNotif('爱情+8亲密度+5'); proceed(); } },
+            { label:'告诉TA"现在的你已经很棒了"', action(){ changeRel('love',4); changeRel('trust',4); showNotif('爱情+4信任度+4'); proceed(); } },
+            { label:'默默记在心里，以后更加注意TA的情绪', action(){ changeRel('love',3); changeAttr('eq',2);
+  showNotif('爱情+3 情商+2'); proceed(); } }
+          ]},
+        { id:'love_family', title:'家人的认可',
+          scene:''+t+'说想带你见家人。<span class="thought">你的心跳一下子变得很快。</span>TA安慰你说："别担心，我妈肯定会喜欢你——我都说了你会织毛衣。"你："我什么时候会织毛衣了？"TA笑了："从现在开始学。一周时间够了吧？"',
+          choices:[
+            { label:'紧张但认真地开始学织毛衣', action(){ changeRel('love',6); changeRel('favor',3); showNotif('爱情+6好感度+3'); proceed(); } },
+            { label:'笑着说"你不是说我温柔就够了"', action(){ changeRel('love',4); changeAttr('charm',2);
+  showNotif('爱情+4 魅力+2'); proceed(); } },
+            { label:'认真准备见家长的礼物和计划', action(){ changeRel('love',3); changeAttr('eq',2); showNotif('爱情+3情商+2'); proceed(); } }
+          ]},
+        { id:'love_song', title:'属于你的歌',
+          scene:''+t+'在深夜发来了一段demo——一首还没发表的歌，歌名是你的名字的谐音。<span class="emphasis">"这首歌不会发表。它只是写给你的。"</span>你戴着耳机听了一整夜。',
+          choices:[
+            { label:'听哭了，然后回复了一个❤️', action(){ changeRel('love',7); changeRel('intimacy',4);
+  showNotif('爱情+7 亲密度+4'); proceed(); } },
+            { label:'认真听完，给了TA最真诚的反馈', action(){ changeRel('love',5); changeRel('trust',3);
+  showNotif('爱情+5 信任度+3'); proceed(); } },
+            { label:'问TA"你不会给别人听过吧？"', action(){ changeRel('love',4); showNotif('爱情+4'); proceed(); } }
+          ]},
+        { id:'love_future', title:'未来的约定',
+          scene:'今天'+t+'突然很认真地说："等合约到期，我们就公开吧。"你愣住了。<span class="emphasis">"我想和你在街上牵着手走，不用戴口罩。"</span>TA的眼睛亮得像是已经看见了那一天。',
+          choices:[
+            { label:'握住TA的手说"我等那一天"', action(){ changeRel('love',7); changeRel('favor',4); showNotif('爱情+7好感度+4'); proceed(); } },
+            { label:'虽然开心但提醒TA要谨慎考虑', action(){ changeRel('love',5); changeAttr('eq',2); showNotif('爱情+5情商+2'); proceed(); } },
+            { label:'两个人一起认真规划未来的时间线', action(){ changeRel('love',4); changeRel('trust',3);
+  showNotif('爱情+4 信任度+3'); proceed(); } }
+          ]},
+        { id:'love_quiet', title:'平凡的幸福',
+          scene:'今天没有工作。你们在家待了一整天——叫了外卖，看了烂片，窝在沙发上各自刷手机。'+t+'的腿搭在你身上，偶尔叫你一声就只是为了让你抬头看TA一眼。<span class="narration">这样的日子太普通了。但你就是觉得幸福。</span>',
+          choices:[
+            { label:'享受这份难得的安静时光', action(){ changeRel('love',3); changeAttr('mental',3); showNotif('爱情+3心理韧性+3'); proceed(); } },
+            { label:'趁TA不注意偷偷拍了一张照片', action(){ changeRel('love',3); changeRel('intimacy',2);
+  showNotif('爱情+3 亲密度+2'); proceed(); } },
+            { label:'突然认真地说"我爱你"', action(){ changeRel('love',5); changeRel('favor',3); showNotif('爱情+5好感度+3'); proceed(); } }
+          ]}
+      ];
+    }
+    return base;
+  }
+
+  function getRandomEvent() {
+    const
+  pools=gs.loveMode?['industry','social','crisis','emotional','love']:['industry','social','crisis','emotional'];
+    const pool=pools[Math.floor(Math.random()*pools.length)];
+    const events=genEvents()[pool];
+    if(!events){return getRandomEvent();} // fallback
+    let avail=events.filter(e=>!gs.recentEvents.includes(e.id));
+    if(!avail.length){avail=events;gs.recentEvents.length=0;}
+    const chosen=avail[Math.floor(Math.random()*avail.length)];
+    gs.recentEvents.push(chosen.id);
+    if(gs.recentEvents.length>7) gs.recentEvents.shift();
+    return chosen;
+  }
+
+  function getCalendarEvent() {
+    const w=gs.week, t=tn();
+    if(w===4&&!gs.eventFlags['cal_4']){gs.eventFlags['cal_4']=true;return{title:'团体综艺录制',scene:t+'所在团体的团综开始录制了！接下来的几周公司上下都在为团综忙碌。<span class="narration">你看到了录制日程表——满满当当的。</span>',big:false};}
+    if(w===12&&!gs.eventFlags['cal_12']){gs.eventFlags['cal_12']=true;return{title:'回归预告',scene:'<span class="highlight">'+t+'</span>的团体即将回归！公司开始严格管控所有工作人员的手机，防止物料外泄。',big:false};}
+    if(w===20&&!gs.eventFlags['cal_20']){gs.eventFlags['cal_20']=true;return{title:'演唱会季',scene:'演唱会季到了！<span class="highlight">'+t+'</span>的团体官宣了今年最大规模的巡演。<span class="emphasis">但每个人的眼睛里都闪着光。</span>',big:true};}
+    if(w===26&&!gs.eventFlags['cal_26']){gs.eventFlags['cal_26']=true;return{title:'年中颁奖典礼',scene:'提名名单公布了。<span class="highlight">'+t+'</span>的名字赫然在列。<span class="thought">TA的努力被看到了。</span>',big:false};}
+    if(w===36&&!gs.eventFlags['cal_36']){gs.eventFlags['cal_36']=true;return{title:'出道周年纪念',scene:'周年纪念日！粉丝应援遍布全城——公交站牌、地铁灯箱、户外大屏。<span class="narration">你走在街上，心里涌起奇异的自豪感。</span>',big:true};}
+    if(w===44&&!gs.eventFlags['cal_44']){gs.eventFlags['cal_44']=true;return{title:'年末颁奖典礼',scene:'<span class="highlight">'+t+'</span>和成员们将走红毯、表演、可能还会拿奖。<span class="emphasis">这是属于他们的夜晚。</span>',big:false};}
+    return null;
+  }
+
+  // ==========================================
+  // TIME SYSTEM
+  // ==========================================
+  function showWeekIntro() {
+    gs.remainingActions = (gs.day<5) ? 2 : 3;
+    let html;
+    if(gs.week===1 && gs.day===0 && gs.timeSlot===0) {
+      html='<p style="font-size:19px;color:#5b21b6;margin-bottom:20px;font-weight:700;letter-spacing:2px">📅 第 1 周 ·星期一 · 上午</p>'+
+        '<p style="line-height:2.3;font-size:16px">北京，二月。</p>'+
+        '<p style="line-height:2.3;font-size:16px">春节刚过，空气中还残留着烟花的气味。你站在时代峰峻大楼的对面，抬头望着那栋灰色的建筑。</p>'+
+        '<p style="line-height:2.3;font-size:16px">这是你<span class="highlight">作为'+(gs.identity?gs.identity.name:'新人')+'</span>的第一天。</p>'+
+        '<span class="divider">· · ·</span>'+
+        '<p style="line-height:2.3;font-size:16px;color:#7c3aed">你深吸一口气，推开了那扇门。</p>';
+    } else if(gs.loveMode&&gs.day===0&&gs.timeSlot===0) {
+      const loveMornings=[
+        '早晨醒来，手机上有一条未读消息——来自<span class="highlight">'+tn()+'</span>。<span class="emphasis">"早安，今天也想见到你。"</span>新的一周开始了，但每一天都变得不一样了。',
+        '新的一周。手机闹钟响起的同时，'+tn()+'的电话也打过来了。<span class="emphasis">"我猜你该起床了。"</span>——恋爱中的早晨，连起床都变得甜了。',
+        '周一的早晨，你发现自己不再抗拒上班这件事了。<span class="narration">因为你知道，在那栋楼里，有一个人在等着见你。</span>',
+      ];
+      html='<p style="line-height:2.3;font-size:16px;color:#ec4899">'+pick(loveMornings)+'</p>';
+    } else {
+      const moods=['晨光透过写字楼的玻璃墙洒进来。新的一天，新的可能。','午后的阳光有些慵懒。楼下的咖啡店里排着长队。','夜幕降临，但这座大楼里还有很多灯亮着。'];
+      html='<p style="line-height:2.3;font-size:16px">'+(moods[gs.timeSlot]||'新的一天开始了。')+'</p>'+
+        '<p style="line-height:2.3;color:#6b7280;font-size:14px">你整理了一下思绪，准备面对接下来的日程。</p>';
+    }
+    showScene(html);
+    updateGameUI();
+    setTimeout(()=>showActionSelection(), 300);
+  }
+
+  function showActionSelection() {
+    updateGameUI();
+    const disabled = gs.remainingActions <= 0;
+
+    const actions = [
+      { ic:'💼', label:'执行本职工作', hint:'专业度+', action(){ doAction(actionWork()); } },
+      { ic:'📈', label:'加班/额外任务', hint:'专业度+ 精力-', action(){ doAction(actionOvertime()); } },
+      { ic:'🤝', label:'职场社交', hint:'拓展人脉', action(){ doAction(actionSocial()); } },
+      { ic:'🎫', label:'参加公开活动', hint:'接触艺人', action(){ doAction(actionPublicEvent()); } },
+      { ic:'🔍', label:'制造偶遇', hint:'隐蔽性判定', action(){ doAction(actionChanceEncounter()); } },
+      { ic:'💬', label:'中间人传话', hint:'需要人脉', action(){ doAction(actionMessageThrough()); } },
+      { ic:'💅', label:'打理形象', hint:'提升魅力', action(){ doAction(actionGrooming()); } },
+      { ic:'📖', label:'研究艺人资料', hint:'了解喜好', action(){ doAction(actionStudy()); } },
+      { ic:'🧘', label:'休息调整', hint:'恢复状态', action(){ doAction(actionRest()); } },
+      { ic:'🎁', label:'准备礼物', hint:'官方渠道', action(){ doAction(actionGift()); } },
+      { ic:'📱', label:'参与直播互动', hint:'线上接触', action(){ doAction(actionLive()); } },
+    ];
+
+    // Add love mode actions
+    if(gs.loveMode) {
+      actions.push(
+        { ic:'💝', label:'秘密约会', hint:'爱情+ 亲密+', action(){ doAction(actionDate()); } },
+        { ic:'💬', label:'深夜谈心', hint:'爱情+ 信任+', action(){ doAction(actionDeepTalk()); } },
+        { ic:'🛡️', label:'守护TA', hint:'爱情+ 信任+ 风险-', action(){ doAction(actionProtect()); } }
+      );
+    }
+
+    if(disabled) {
+      showDialogue('⏳', '行动次数已用完，请点击下方按钮进入下一时刻');
+      showContinue('进 入 下 一 时 刻 ▸', ()=>advanceTime());
+    } else {
+      showDialogue('📋 行动选择', '请选择接下来要做的事（行动'+(gs.remainingActions)+'次）');
+      document.getElementById('continue-container').innerHTML='';
+    }
+
+    const container = document.getElementById('choices-container');
+    const grid = document.createElement('div');
+    grid.className = 'action-grid';
+    for(const a of actions) {
+      const card = document.createElement('div');
+      card.className = 'action-card' + (disabled ? ' disabled' : '');
+      card.innerHTML = '<span class="aic">'+a.ic+'</span>'+a.label+'<br><small style="opacity:0.5">'+a.hint+'</small>';
+      if(!disabled) card.onclick = () => a.action();
+      grid.appendChild(card);
+    }
+    container.appendChild(grid);
+  }
+
+  function advanceTime() {
+    const cal=getCalendarEvent();
+    if(cal) {
+      showScene('<div style="text-align:center;margin:20px 0"><span style="font-size:40px">'+(cal.big?'🎪':'🗓️')+'</span></div>'+
+        '<p style="font-size:18px;color:#7c3aed;text-align:center;margin-bottom:12px;font-weight:700;letter-spacing:2px">'+cal.title+'</p>'+
+        '<p style="line-height:2.3;font-size:16px;text-align:center">'+cal.scene+'</p>');
+      showDialogue('🗓️ '+cal.title, '这是一个重要的日子……');
+      showContinue('继 续 ▸', ()=>advanceTimeSlot());
+      return;
+    }
+    if(Math.random()<0.35) {
+      const evt=getRandomEvent();
+      showScene('<div style="text-align:center;margin:20px 0"><span style="font-size:40px">⚡</span></div>'+
+        '<p style="font-size:18px;color:#db2777;text-align:center;margin-bottom:12px;font-weight:700;letter-spacing:2px">'+evt.title+'</p>'+
+        '<p style="line-height:2.3;font-size:16px">'+evt.scene+'</p>');
+      showDialogue('⚡ '+evt.title, '你遇到了意料之外的情况……');
+      showChoices(evt.choices);
+      return;
+    }
+    advanceTimeSlot();
+  }
+
+  function advanceTimeSlot() {
+    if(gs.day===0 && gs.timeSlot===0 && gs.week%4===0) {
+      const decay=1+Math.floor(Math.random()*3);
+      changeRel('favor',-decay);
+      if(gs.relations.favor>30 && Math.random()<0.5) changeRel('favor',-1);
+      if(decay>=2) showNotif('⏰ 疏于接触，好感度衰减-'+decay,'neutral');
+    }
+    gs.timeSlot++;
+    if(gs.timeSlot>=3){gs.timeSlot=0;gs.day++;
+      if(gs.day>=7){gs.day=0;gs.week++;
+        if(gs.week>gs.totalWeeks){
+          // Check for survive achievement
+          if(gs.relations.risk<20&&!gs.achievements.survive){gs.achievements.survive=true;}
+          if(!gs.achievements.week52)gs.achievements.week52=true;
+          triggerEnding();return;
+        }
+        if(gs.week%4===0) showNotif('📅 第 '+gs.week+' 周了','neutral');
+      }
+    }
+    updateGameUI();
+    checkExposure();
+    showWeekIntro();
+  }
+
+  function proceed() { setTimeout(()=>{
+    checkExposure();
+    if(!gs.ended) advanceTimeSlot();
+  }, 600); }
+  function showContinue(text, action) {
+    const container=document.getElementById('continue-container'); container.innerHTML='';
+    const btn=document.createElement('button'); btn.className='continue-btn';
+    btn.textContent=text||'▸ 继 续'; btn.onclick=action; container.appendChild(btn);
+  }
+
+  // ==========================================
+  // SAVE / LOAD SYSTEM
+  // ==========================================
+  function saveGame(slot) {
+    const data={
+      player:gs.player, identity:gs.identity, target:gs.target,
+      attrs:gs.attrs, relations:gs.relations,
+      week:gs.week, day:gs.day, timeSlot:gs.timeSlot,
+      remainingActions:gs.remainingActions, eventFlags:gs.eventFlags,
+      recentEvents:gs.recentEvents, achievements:gs.achievements,
+      loveMode:gs.loveMode,
+      savedAt: new Date().toLocaleString()
+    };
+    localStorage.setItem('sis_save_'+slot, JSON.stringify(data));
+    showNotif('💾 存档 '+(slot+1)+' 保存成功！');
+    closeModal();
+  }
+
+  function loadGame(slot) {
+    const raw=localStorage.getItem('sis_save_'+slot);
+    if(!raw) { showNotif('该存档为空','warning'); return; }
+    try {
+      const data=JSON.parse(raw);
+      gs.player=data.player; gs.identity=data.identity; gs.target=data.target;
+      gs.attrs=data.attrs; gs.relations=data.relations;
+      gs.week=data.week; gs.day=data.day; gs.timeSlot=data.timeSlot;
+      gs.remainingActions=data.remainingActions;
+      gs.eventFlags=data.eventFlags||{};
+      gs.recentEvents=data.recentEvents||[];
+      gs.achievements=data.achievements||{};
+      gs.loveMode=data.loveMode||false;
+      gs.ended=false;
+      if(!gs.relations.love&&gs.relations.love!==0)gs.relations.love=0;
+      showScreen('game-screen'); updateGameUI(); showWeekIntro();
+      showNotif('📂 存档 '+(slot+1)+' 读取成功！');
+    } catch(e) { showNotif('存档损坏','warning'); }
+  }
+
+  function deleteSave(slot) {
+    localStorage.removeItem('sis_save_'+slot);
+    showNotif('存档 '+(slot+1)+' 已删除','neutral');
+    closeModal();
+  }
+
+  function renderSaveSlots(mode) {
+    const container=document.getElementById('save-slots');
+    container.innerHTML='';
+    const title=document.getElementById('modal-title');
+    title.textContent=mode==='save'?'💾 保存进度':'📂 读取存档';
+
+    for(let i=0;i<3;i++) {
+      const key='sis_save_'+i;
+      const raw=localStorage.getItem(key);
+      let data=null;
+      try{if(raw) data=JSON.parse(raw);}catch(e){}
+      const slotDiv=document.createElement('div');
+      slotDiv.className='save-slot';
+      const info=data?'第'+data.week+'周 · '+(data.player?.name||'???')+' · '+(data.target?.name||'???')+' ·'+(data.savedAt||''):'空存档';
+      const name=data?'存档 '+(i+1)+' — 第'+data.week+'周':'存档 '+(i+1)+' — 空';
+
+      slotDiv.innerHTML='<div class="slot-info"><div class="slot-name">'+name+'</div><divclass="slot-meta">'+info+'</div></div><div class="slot-btns"></div>';
+
+      const btns=slotDiv.querySelector('.slot-btns');
+      if(mode==='save') {
+        const sBtn=document.createElement('button'); sBtn.className='slot-btn';
+        sBtn.textContent='保存'; sBtn.onclick=()=>saveGame(i); btns.appendChild(sBtn);
+        if(data) {
+          const dBtn=document.createElement('button'); dBtn.className='slot-btn danger';
+          dBtn.textContent='删除'; dBtn.onclick=()=>deleteSave(i); btns.appendChild(dBtn);
+        }
+      } else {
+        if(data) {
+          const lBtn=document.createElement('button'); lBtn.className='slot-btn';
+          lBtn.textContent='读取'; lBtn.onclick=()=>loadGame(i); btns.appendChild(lBtn);
+        }
+      }
+      container.appendChild(slotDiv);
+    }
+  }
+
+  function showSaveModal() { renderSaveSlots('save'); document.getElementById('save-modal').classList.add('active'); }
+  function showLoadModal() { renderSaveSlots('load'); document.getElementById('save-modal').classList.add('active'); }
+  function showLoadScreen() { renderSaveSlots('load'); document.getElementById('save-modal').classList.add('active'); }
+  function closeModal() { document.getElementById('save-modal').classList.remove('active'); }
+
+  function exitToTitle() {
+    if(confirm('确定要退出到主菜单吗？\n\n未保存的进度将丢失。')) {
+      showScreen('title-screen');
+    }
+  }
+
+  // ==========================================
+  // ACHIEVEMENTS DISPLAY
+  // ==========================================
+  function showAchievements() {
+    const grid=document.getElementById('ach-grid');
+    grid.innerHTML='';
+    achievementDefs.forEach(a=>{
+      const card=document.createElement('div');
+      const unlocked=gs.achievements[a.id];
+      card.className='ach-card '+(unlocked?'unlocked':'locked');
+      card.innerHTML='<span class="ach-icon">'+(unlocked?a.icon:'🔒')+'</span>'+
+        '<div class="ach-name">'+a.name+'</div>'+
+        '<div class="ach-desc">'+a.desc+'</div>'+
+        (unlocked?'<div style="font-size:10px;color:#f9a8d4;margin-top:4px">✓ 已解锁</div>':'<div style="font-size:10px;color:#6b7280;margin-top:4px">未解锁</div>');
+      grid.appendChild(card);
+    });
+    showScreen('achievement-screen');
+  }
+
+  // ==========================================
+  // ENDINGS
+  // ==========================================
+  function triggerEnding() {
+    gs.ended=true;
+    const f=gs.relations.favor, t=gs.relations.trust, i=gs.relations.intimacy, r=gs.relations.risk, l=gs.relations.love,
+   m=gs.attrs.mental, tn2=tn();
+    let label,title,desc,color;
+
+    if(l>=100){color='#f472b6';label='💒 最高成就 · 百年好合';title='结婚 · 我们的故事';desc=''+tn2+'在演唱会的最后一场上，唱了那首从未发表过的歌。\n\n灯光暗下，TA对着麦克风说："这首歌，写了很久。写给我喜欢的人。"全场安静了三秒，然后尖叫。\n\n但你已经在后台等着了。TA走下台的时候，你伸出手，TA握住。没有言语。\n\n下个月，你们在民政局拍了那张红底白衬衫的照片。TA发了一条微博——一张合影，配文只有两个字："我的。"\n\n评论区爆炸了。但这一次，你们不再害怕。';}
+    else if(f>=90&&t>=85&&r<40){color='#f472b6';label='💕 HE · 幸福结局';title='地下恋情 ·稳定版';desc='你们维持着秘密的恋爱关系。'+tn2+'的每个回归期你都在幕后默默支持，你学会了在无人的角落拥抱。\n\n没有公开，但你们都清楚这是真实的。\n\n——在这个圈子里，有些幸福不需要被看见。';}
+    else if(f>=95&&t>=90&&gs.eventFlags.survived_scandal){color='#f472b6';label='💕 HE · 幸福结局';title='公开恋爱 ·风暴后的晴天';desc='绯闻爆发时你们没有选择分手，'+tn2+'在风暴中心握住了你的手。公司震怒、粉丝哭诉、热搜爆炸——但一年后，人们习惯了。\n\nTA在演唱会上唱的那首歌，所有人都知道是写给谁的。';}
+    else if(f>=60&&gs.eventFlags.separated){color='#f472b6';label='💕 HE · 幸福结局';title='等待 ·退圈后的重逢';desc=''+tn2+'的合约到期那天，你收到了一条没有署名的消息。定位是你们第一次单独吃饭的那家店。推开门，TA穿着便装坐在角落，像一个终于卸下盔甲的普通人。\n\n"好久不见。"TA说。';}
+    else if(f>=60&&r>=80&&i>=40){color='#9ca3af';label='💔 BE · 遗憾结局';title='体面分手';desc='最后一次见面，'+tn2+'把你送到出租车上，说"谢谢你，对不起"。你没有回头，因为你知道回头就走不了了。\n\n有些感情不是不够深，只是不够幸运。';}
+    else if(f<=-30&&t<=20){color='#9ca3af';label='💔 BE · 遗憾结局';title='粉转黑 ·信任崩塌';desc=''+tn2+'看你的眼神变了。从温暖变成失望，从失望变成陌生。你终于明白，有些东西碎了就是碎了。\n\n你删掉了所有照片——但是，你还是会在深夜搜索TA的名字。';}
+    else if(r>=85&&m<=30){color='#9ca3af';label='💔 BE · 遗憾结局';title='网暴吞噬';desc='几万条辱骂、人肉搜索、P图造谣。你删掉了所有社交账号，换了手机号码，搬离了北京。\n\n一年后你在另一个城市看到TA的海报，站了很久，然后继续走。';}
+    else{color='#c084fc';label='🌅开放结局';title='未完待续';desc='你们之间什么都没有发生，又好像什么都发生了。TA记得你喜欢的咖啡口味，你知道TA压力大时会揉后颈。\n\n但每次TA在舞台上看向观众席的某个方向时，你总觉得那是你的位置。\n\n故事没有结束，只是暂时告一段落。';}
+
+    document.getElementById('ending-type-label').textContent=label;
+    document.getElementById('ending-type-label').style.color=color;
+    document.getElementById('ending-title').textContent=title;
+    document.getElementById('ending-desc').textContent=desc;
+    document.getElementById('ending-stats').innerHTML='好感度 '+f+' · 信任度 '+t+' · 亲密度 '+i+' · 曝光风险 '+r+(gs.loveMode?' · 爱情值 '+l:'')+'<br>身份：'+(gs.identity?gs.identity.name:'---')+' · 目标：'+tn2;
+    showScreen('ending-screen');
+  }
+
+  // ==========================================
+  // CREATION FLOW
+  // ==========================================
+  function confirmCreate() {
+    gs.player={
+      name:document.getElementById('c-name').value||'林悦',
+      gender:document.getElementById('c-gender').value,
+      age:parseInt(document.getElementById('c-age').value)||23,
+      nationality:document.getElementById('c-nationality').value,
+      appearance:document.getElementById('c-appearance').value||'清秀干净',
+      personality:document.getElementById('c-personality').value,
+      fanHistory:document.getElementById('c-fan-history').value||'',
+      selfDesc:document.getElementById('c-self-desc').value||''
+    };
+    showScreen('identity-screen'); renderIdentities();
+  }
+  function renderIdentities() {
+    const grid=document.getElementById('identity-grid'); grid.innerHTML='';
+    identities.forEach(idn=>{
+      const card=document.createElement('div'); card.className='identity-card';
+      card.innerHTML='<span class="icon-big">'+idn.icon+'</span><h3>'+idn.name+'</h3><div class="role">'+idn.role+'</div><div class="desc">'+idn.desc+'</div><div class="stats">'+idn.stats+'</div>';
+      card.onclick=()=>{document.querySelectorAll('.identity-card').forEach(c=>c.classList.remove('selected'));card.classList.add('selected');gs.identity=idn;document.getElementById('btn-confirm-identity').disabled=false;};
+      grid.appendChild(card);
+    });
+  }
+
+  function confirmIdentity() { showScreen('target-screen');
+    const grid=document.getElementById('target-grid'); grid.innerHTML='';
+    targets.forEach(t=>{
+      const card=document.createElement('div'); card.className='target-card';
+      card.innerHTML='<div class="avatar">'+t.emoji+'</div><h4>'+t.name+'</h4><div class="group">'+t.group+'</div>';
+      card.onclick=()=>{document.querySelectorAll('.target-card').forEach(c=>c.classList.remove('selected'));card.classList.add('selected');gs.target=t;document.getElementById('btn-confirm-target').disabled=false;};
+      grid.appendChild(card);
+    });
+  }
+
+  let attrPool=15;
+  function confirmTarget(){showScreen('attr-screen');gs.attrs={charm:5,eq:5,professional:5,stealth:5,connections:5,mental:5};attrPool=15;renderAttrPanel();}
+  function renderAttrPanel(){
+    const panel=document.getElementById('attr-panel');panel.innerHTML='';
+    attrDefs.forEach(a=>{
+      const row=document.createElement('div');row.className='attr-row';
+      row.innerHTML='<div class="attr-icon">'+a.icon+'</div><div class="attr-info"><div class="attr-name">'+a.name+'</div><div class="attr-desc">'+a.desc+'</div></div><div class="attr-bar-wrap"><div class="attr-bar-fill" id="ab-'+a.id+'" style="width:'+(gs.attrs[a.id]/15*100)+'%"></div></div><div class="attr-ctrl"><button class="attr-btn" data-a="'+a.id+'" data-d="-1">-</button><div class="attr-val" id="av-'+a.id+'">'+gs.attrs[a.id]+'</div><button class="attr-btn" data-a="'+a.id+'" data-d="1">+</button></div>';
+      panel.appendChild(row);
+    });
+    const total=document.createElement('div');total.className='attr-total has-points';total.id='attr-total';total.textContent='剩余点数：'+attrPool;panel.appendChild(total);
+    panel.querySelectorAll('.attr-btn').forEach(btn=>{btn.onclick=()=>{
+      const id=btn.dataset.a,d=parseInt(btn.dataset.d);
+      if(d>0&&(attrPool<=0||gs.attrs[id]>=15))return;
+      if(d<0&&gs.attrs[id]<=0)return;
+      gs.attrs[id]+=d;attrPool-=d;
+      document.getElementById('av-'+id).textContent=gs.attrs[id];
+      document.getElementById('ab-'+id).style.width=(gs.attrs[id]/15*100)+'%';
+      const tel=document.getElementById('attr-total');tel.textContent='剩余点数：'+attrPool;tel.className='attr-total '+(attrPool>0?'has-points':'no-points');
+      document.getElementById('btn-confirm-attr').disabled=attrPool!==0;
+      document.getElementById('attr-sub').textContent=attrPool>0?'剩余点数：'+attrPool:'分配完毕 ✓';
+    };});
+  }
+  function confirmAttributes(){
+    const b=gs.identity?gs.identity.bonuses:{};
+    if(b.professional)gs.attrs.professional+=b.professional;
+    if(b.charm)gs.attrs.charm+=b.charm;
+    if(b.connections)gs.attrs.connections+=b.connections;
+    if(b.intimacy_base)gs.relations.intimacy+=b.intimacy_base;
+    if(b.trust_barrier)gs.relations.trust=Math.max(0,gs.relations.trust-b.trust_barrier);
+    if(b.risk_mod)gs.relations.risk+=b.risk_mod;
+    if(b.stealth!==undefined&&b.stealth<0)gs.attrs.stealth=Math.max(0,gs.attrs.stealth+b.stealth);
+    showScreen('game-screen');updateGameUI();showWeekIntro();
+  }
+
+  function startQuickGame(){
+    gs.player={name:'林悦',gender:'女',age:23,nationality:'中国',appearance:'清秀干净，笑起来有酒窝',personality:'温柔',fanHistory:'3年，追过TNT',selfDesc:'一个怀揣梦想来到北京的普通女孩。'};
+    gs.identity=identities[0];gs.target=targets[0];
+    gs.attrs={charm:7,eq:9,professional:8,stealth:6,connections:8,mental:7};
+    gs.relations={favor:0,trust:2,intimacy:0,risk:5,love:0};
+    gs.week=1;gs.day=0;gs.timeSlot=0;gs.remainingActions=2;gs.eventFlags={};gs.recentEvents=[];
+    gs.achievements={};gs.loveMode=false;gs.ended=false;
+    showScreen('game-screen');updateGameUI();showWeekIntro();
+  }
+
+  // ==========================================
+  // INIT
+  // ==========================================
+  function init(){
+    const starsEl=document.getElementById('stars');
+    for(let i=0;i<60;i++){const star=document.createElement('div');star.className='star';star.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+(1+Math.random()*2.5)+'px;height:'+(1+Math.random()*2.5)+'px;--dur:'+(1.5+Math.random()*2)+'s;animation-delay:'+Math.random()*3+'s';starsEl.appendChild(star);}
+    const container=document.getElementById('game-container');
+    const petalChars=['🌸','💮','✿','❀','🌷'];
+    for(let i=0;i<18;i++){const petal=document.createElement('div');petal.className='petal';petal.textContent=petalChars[Math.floor(Math.random()*petalChars.length)];petal.style.cssText='left:'+Math.random()*100+'%;font-size:'+(8+Math.random()*18)+'px;animation-duration:'+(7+Math.random()*14)+'s;animation-delay:'+Math.random()*12+'s';container.appendChild(petal);}
+    renderIdentities();
+  }
+  init();
+  </script>
+  </body>
+  </html>

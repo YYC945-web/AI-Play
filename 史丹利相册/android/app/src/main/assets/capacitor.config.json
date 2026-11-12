@@ -1,0 +1,12 @@
+{
+	"appId": "com.stanly.photoalbum",
+	"appName": "史丹利相册",
+	"webDir": "www",
+	"bundledWebRuntime": false,
+	"server": {
+		"androidScheme": "https"
+	},
+	"android": {
+		"allowMixedContent": true
+	}
+}

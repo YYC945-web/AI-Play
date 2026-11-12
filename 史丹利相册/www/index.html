@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#8B6914">
+  <meta name="description" content="全屋定制家具案例离线相册">
+
+  <!-- iOS PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="史丹利相册">
+  <link rel="apple-touch-icon" href="icons/icon-180x180.png">
+
+  <title>史丹利相册</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+
+  <!-- JSZip CDN (cached by Service Worker for offline) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+  <script src="script.js" defer></script>
+</head>
+<body>
+
+  <!-- ===== 启动加载遮罩 ===== -->
+  <div id="loading-screen" style="position:fixed;top:0;left:0;right:0;bottom:0;background:#F5F2ED;z-index:999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
+    <div style="width:40px;height:40px;border:4px solid #E0D8CC;border-top-color:#8B6914;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+    <span style="color:#8B7E6A;font-size:14px;">加载中...</span>
+  </div>
+  <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+  <!-- ===== 顶部导航栏 ===== -->
+  <header id="app-header">
+    <h1 id="header-title">史丹利相册</h1>
+    <button id="btn-select-mode" class="icon-btn" title="批量选择">☐</button>
+  </header>
+
+  <!-- ===== Tab 1: 相册 ===== -->
+  <main id="tab-album" class="tab-page active">
+
+    <!-- 搜索栏 -->
+    <div id="search-bar">
+      <input type="search" id="search-input" placeholder="搜索备注或分类…" enterkeyhint="search">
+      <button id="btn-search-clear" class="icon-btn hidden">✕</button>
+    </div>
+
+    <!-- 分类筛选栏 -->
+    <nav id="category-filter">
+      <ul id="category-filter-list">
+        <li class="filter-chip active" data-category="all">全部</li>
+      </ul>
+    </nav>
+
+    <!-- 排序栏 -->
+    <div id="sort-bar">
+      <select id="sort-select">
+        <option value="time-desc">最新优先</option>
+        <option value="time-asc">最早优先</option>
+        <option value="name-asc">名称 A-Z</option>
+        <option value="name-desc">名称 Z-A</option>
+      </select>
+      <span id="photo-count">0 张图片</span>
+    </div>
+
+    <!-- 图片网格 -->
+    <div id="photo-grid" class="photo-grid"></div>
+
+    <!-- 空状态 -->
+    <div id="empty-state" class="empty-state">
+      <div class="empty-icon">📷</div>
+      <p>还没有内容</p>
+      <p class="empty-sub">点击下方 + 按钮上传图片或视频</p>
+    </div>
+
+    <!-- 浮动上传按钮 -->
+    <button id="btn-upload" class="fab" title="上传">+</button>
+
+    <!-- 批量操作栏 -->
+    <div id="batch-bar" class="batch-bar hidden">
+      <button id="btn-batch-cancel" class="btn-text">取消</button>
+      <span id="batch-count">已选 0 张</span>
+      <button id="btn-batch-delete" class="btn-danger">删除选中</button>
+    </div>
+  </main>
+
+  <!-- ===== Tab 2: 分类管理 ===== -->
+  <main id="tab-category" class="tab-page">
+
+    <div id="category-header">
+      <h2>分类管理</h2>
+      <button id="btn-add-category" class="btn-primary">新增分类</button>
+    </div>
+
+    <p class="hint-text">长按拖动调整顺序，左滑编辑或删除</p>
+
+    <ul id="category-list" class="category-list"></ul>
+
+    <div id="category-empty" class="empty-state">
+      <p>暂无分类，请先创建</p>
+    </div>
+  </main>
+
+  <!-- ===== Tab 3: 我的 ===== -->
+  <main id="tab-settings" class="tab-page">
+
+    <!-- 存储信息 -->
+    <section class="settings-section">
+      <h3>存储空间</h3>
+      <div id="storage-info">
+        <div class="storage-bar-bg">
+          <div id="storage-bar-fill" class="storage-bar-fill"></div>
+        </div>
+        <div class="storage-text">
+          <span id="storage-used-text">0 MB</span>
+          <span id="storage-left-text"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 备份 -->
+    <section class="settings-section">
+      <h3>数据备份</h3>
+      <div class="settings-row">
+        <button id="btn-export" class="btn-outline">导出备份 (ZIP)</button>
+        <button id="btn-import" class="btn-outline">导入备份 (ZIP)</button>
+      </div>
+      <p class="hint-text" id="last-backup-time"></p>
+    </section>
+
+    <!-- 压缩设置 -->
+    <section class="settings-section">
+      <h3>图片压缩</h3>
+      <div class="settings-row-col">
+        <label>压缩质量: <span id="quality-label">80%</span></label>
+        <input type="range" id="compress-quality" min="30" max="100" value="80" step="5">
+        <label>最大宽度: <span id="max-width-label">1080px</span></label>
+        <input type="range" id="compress-max-width" min="480" max="1920" value="1080" step="60">
+      </div>
+    </section>
+
+    <!-- 清空 -->
+    <section class="settings-section settings-danger">
+      <h3>危险操作</h3>
+      <button id="btn-clear-all" class="btn-danger">清空所有数据</button>
+      <p class="hint-text">此操作不可恢复，建议先导出备份</p>
+    </section>
+
+    <!-- 关于 -->
+    <section class="settings-section">
+      <h3>关于</h3>
+      <p class="hint-text">史丹利全屋定制案例相册 v1.0<br>纯离线 PWA · 数据存储在本地</p>
+    </section>
+  </main>
+
+  <!-- ===== 底部导航栏 ===== -->
+  <nav id="bottom-nav">
+    <button class="nav-btn active" data-tab="album">
+      <span class="nav-icon">🖼</span>
+      <span class="nav-label">相册</span>
+    </button>
+    <button class="nav-btn" data-tab="category">
+      <span class="nav-icon">📂</span>
+      <span class="nav-label">分类管理</span>
+    </button>
+    <button class="nav-btn" data-tab="settings">
+      <span class="nav-icon">⚙</span>
+      <span class="nav-label">我的</span>
+    </button>
+  </nav>
+
+  <!-- ===== 大图查看模态框 ===== -->
+  <div id="viewer" class="viewer hidden">
+    <div id="viewer-header">
+      <button id="btn-viewer-back" class="icon-btn">←</button>
+      <span id="viewer-counter">1 / 1</span>
+      <button id="btn-viewer-delete" class="icon-btn">🗑</button>
+    </div>
+    <div id="viewer-swiper" class="viewer-swiper"></div>
+    <div id="viewer-info" class="viewer-info">
+      <p id="viewer-note" class="viewer-note"></p>
+      <p id="viewer-date" class="viewer-date"></p>
+      <p id="viewer-category" class="viewer-category"></p>
+    </div>
+    <div id="viewer-actions">
+      <button id="btn-viewer-edit" class="btn-text">编辑备注</button>
+      <button id="btn-viewer-share" class="btn-text">分享</button>
+    </div>
+  </div>
+
+  <!-- ===== Toast 提示 ===== -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- ===== 确认对话框 ===== -->
+  <div id="confirm-dialog" class="dialog-overlay hidden">
+    <div class="dialog-box">
+      <p id="confirm-message"></p>
+      <div class="dialog-btns">
+        <button id="confirm-cancel" class="btn-text">取消</button>
+        <button id="confirm-ok" class="btn-danger">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 输入对话框（新增/编辑分类、编辑备注） ===== -->
+  <div id="input-dialog" class="dialog-overlay hidden">
+    <div class="dialog-box">
+      <p id="input-dialog-title"></p>
+      <input type="text" id="input-dialog-field" placeholder="">
+      <div class="dialog-btns">
+        <button id="input-cancel" class="btn-text">取消</button>
+        <button id="input-ok" class="btn-primary">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 上传选项底部弹出 ===== -->
+  <div id="upload-sheet" class="bottom-sheet hidden">
+    <div class="sheet-backdrop"></div>
+    <div class="sheet-content">
+      <h3>上传图片 / 视频</h3>
+      <button id="upload-gallery" class="sheet-btn">从相册选择（图片+视频）</button>
+      <div class="camera-row">
+        <button id="upload-photo" class="sheet-btn camera-half">📷 拍照</button>
+        <button id="upload-video" class="sheet-btn camera-half">🎬 录像</button>
+      </div>
+      <button id="upload-cancel" class="sheet-btn sheet-cancel">取消</button>
+    </div>
+  </div>
+
+  <!-- ===== 分类选择底部弹出 ===== -->
+  <div id="category-picker" class="bottom-sheet hidden">
+    <div class="sheet-backdrop"></div>
+    <div class="sheet-content category-picker-content">
+      <h3>选择分类</h3>
+      <ul id="category-picker-list" class="cat-picker-list"></ul>
+      <button id="category-picker-new" class="sheet-btn cat-new-btn">+ 新建分类</button>
+      <button id="category-picker-cancel" class="sheet-btn sheet-cancel">取消</button>
+    </div>
+  </div>
+
+  <!-- 隐藏的文件输入 -->
+  <input type="file" id="file-input" accept="image/*,video/*" multiple hidden>
+  <input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
+  <input type="file" id="video-input" accept="video/*" capture="environment" hidden>
+  <input type="file" id="import-input" accept=".zip" hidden>
+
+</body>
+</html>

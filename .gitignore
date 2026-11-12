@@ -1,0 +1,31 @@
+# ===== 依赖目录 =====
+node_modules/
+
+# ===== 构建产物 =====
+build/
+dist/
+out/
+.gradle/
+android/app/build/
+android/build/
+android/.gradle/
+*.apk
+*.aab
+
+# ===== Python =====
+__pycache__/
+*.pyc
+*.pyo
+
+# ===== 日志 / 临时文件 =====
+*.log
+
+# ===== IDE / 编辑器 =====
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# ===== Claude Code 本地数据 =====
+.claude/

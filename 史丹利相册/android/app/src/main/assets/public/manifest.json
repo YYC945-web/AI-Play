@@ -1,0 +1,20 @@
+{
+  "name": "史丹利全屋定制案例相册",
+  "short_name": "史丹利相册",
+  "description": "全屋定制家具案例离线相册 - 随时随地查看和管理案例照片与视频",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#8B6914",
+  "background_color": "#FFFFFF",
+  "icons": [
+    { "src": "icons/icon-72x72.png", "sizes": "72x72", "type": "image/png" },
+    { "src": "icons/icon-96x96.png", "sizes": "96x96", "type": "image/png" },
+    { "src": "icons/icon-128x128.png", "sizes": "128x128", "type": "image/png" },
+    { "src": "icons/icon-144x144.png", "sizes": "144x144", "type": "image/png" },
+    { "src": "icons/icon-152x152.png", "sizes": "152x152", "type": "image/png" },
+    { "src": "icons/icon-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-384x384.png", "sizes": "384x384", "type": "image/png" },
+    { "src": "icons/icon-512x512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
